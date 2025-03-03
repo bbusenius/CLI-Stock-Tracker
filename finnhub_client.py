@@ -187,3 +187,58 @@ def calculate_changes(
     )
 
     return daily_change, ytd_change, ten_year_change
+
+
+def fetch_ticker_data(client: finnhub.Client, ticker: str) -> dict:
+    """
+    Fetches and aggregates financial data for the given ticker.
+
+    This function retrieves the quote, company profile, basic financials, and historical
+    closing prices (YTD and 10 years ago) for the specified ticker. It then calculates
+    the daily, YTD, and 10-year percentage changes. If the ticker is invalid (i.e., quote
+    data is unavailable), it returns a dictionary with a 'message' key indicating the
+    data is unavailable. Otherwise, it returns a dictionary with all the fetched and
+    calculated data, where missing values are represented as None.
+
+    Args:
+        client (finnhub.Client): The initialized Finnhub API client.
+        ticker (str): The stock or ETF ticker symbol.
+
+    Returns:
+        dict: A dictionary containing the aggregated data. If the ticker is invalid,
+              it contains {'ticker': str, 'message': 'Data unavailable'}. Otherwise,
+              it contains keys for 'ticker', 'company_name', 'current_price', 'eps',
+              'pe_ratio', 'dividend', 'daily_change', 'ytd_change', and 'ten_year_change',
+              with values that may be None if the data is unavailable.
+
+    Notes:
+        - The function assumes that all prior fetch functions (`get_quote`, etc.) return
+          None on failure (e.g., API errors, invalid tickers), which is handled here.
+        - Missing values are kept as None to allow the display module to format them as 'N/A'.
+        - Edge cases like API rate limits or partial data are implicitly handled via None returns
+          from the fetch functions.
+    """
+    quote = get_quote(client, ticker)
+    if quote is None:
+        return {'ticker': ticker, 'message': 'Data unavailable'}
+
+    profile = get_profile(client, ticker)
+    financials = get_financials(client, ticker)
+    ytd_price = get_ytd_price(client, ticker)
+    ten_year_price = get_ten_year_price(client, ticker)
+
+    daily_change, ytd_change, ten_year_change = calculate_changes(
+        quote, ytd_price, ten_year_price
+    )
+
+    return {
+        'ticker': ticker,
+        'company_name': profile,
+        'current_price': quote.get('c'),
+        'eps': financials.get('eps') if financials else None,
+        'pe_ratio': financials.get('pe') if financials else None,
+        'dividend': financials.get('dividend') if financials else None,
+        'daily_change': daily_change,
+        'ytd_change': ytd_change,
+        'ten_year_change': ten_year_change,
+    }
