@@ -102,3 +102,46 @@ def get_profile(client: finnhub.Client, ticker: str) -> str | None:
             return None
     except FinnhubAPIException:
         return None
+
+
+def get_financials(client: finnhub.Client, ticker: str) -> dict[str, float | None]:
+    """
+    Fetch basic financials data for a given ticker from the Finnhub API.
+
+    This function retrieves the Earnings Per Share (EPS), Price-to-Earnings (PE) ratio, and Dividend Yield
+    from the Finnhub API's basic financials endpoint. It extracts specific metrics from the API response
+    and returns them in a dictionary. If the API call fails or the required data is missing, the corresponding
+    fields in the dictionary are set to None.
+
+    Args:
+        client (finnhub.Client): The Finnhub API client instance.
+        ticker (str): The stock or ETF ticker symbol (e.g., "AAPL").
+
+    Returns:
+        dict[str, float | None]: A dictionary containing the following keys:
+            - 'eps': Earnings Per Share (TTM) or None if unavailable.
+            - 'pe': Price-to-Earnings ratio (basic excluding extraordinary items TTM) or None if unavailable.
+            - 'dividend': Dividend Yield (TTM) or None if unavailable.
+
+    Notes:
+        - The function uses the 'company_basic_financials' endpoint of the Finnhub API.
+        - The specific metrics extracted are 'epsTTM', 'peBasicExclExtraTTM', and 'dividendYield' from the 'metric' dictionary.
+        - If the API call raises a FinnhubAPIException (e.g., due to network errors, rate limits, or invalid API key),
+          or if the 'metric' key is missing in the response, all fields are set to None.
+        - This function assumes that the ticker is valid; validation should be performed separately (e.g., via get_quote).
+        - The PE ratio uses 'peBasicExclExtraTTM' as a trailing metric, aligning with common investor use, since 'peTTM'
+          is not explicitly available in the API documentation.
+    """
+    try:
+        financials = client.company_basic_financials(ticker, 'all')
+        if 'metric' in financials:
+            metric = financials['metric']
+            return {
+                'eps': metric.get('epsTTM'),
+                'pe': metric.get('peBasicExclExtraTTM'),
+                'dividend': metric.get('dividendYield'),
+            }
+        else:
+            return {'eps': None, 'pe': None, 'dividend': None}
+    except FinnhubAPIException:
+        return {'eps': None, 'pe': None, 'dividend': None}
