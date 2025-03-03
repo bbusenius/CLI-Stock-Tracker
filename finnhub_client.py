@@ -8,6 +8,7 @@ and data extraction for the Stock and ETF Price Tracker CLI tool.
 
 import os
 import sys
+from datetime import datetime, timedelta
 
 import finnhub
 from finnhub.exceptions import FinnhubAPIException
@@ -145,3 +146,42 @@ def get_financials(client: finnhub.Client, ticker: str) -> dict[str, float | Non
             return {'eps': None, 'pe': None, 'dividend': None}
     except FinnhubAPIException:
         return {'eps': None, 'pe': None, 'dividend': None}
+
+
+def get_ytd_price(client: finnhub.Client, ticker: str) -> float | None:
+    """
+    Fetch the historical closing price from the start of the year for YTD % change calculation.
+
+    This function retrieves daily stock candle data from January 1 to January 10 of the current year
+    and returns the closing price of the earliest available trading day within that range. This price
+    is used to calculate the Year-To-Date (YTD) percentage change.
+
+    Args:
+        client (finnhub.Client): The Finnhub API client instance.
+        ticker (str): The stock or ETF ticker symbol (e.g., "AAPL").
+
+    Returns:
+        float | None: The closing price from the start of the year if available, otherwise None.
+
+    Notes:
+        - The date range is set from January 1 to January 10 to capture the first trading day of the year,
+          accounting for weekends and holidays when markets are closed.
+        - If no data is available within this range (e.g., for newly listed stocks), the function returns None.
+        - The function uses the 'stock_candles' endpoint with daily resolution ('D').
+        - Timestamps are converted to Unix format (seconds since epoch) for the API call.
+        - Error handling includes catching FinnhubAPIException for API-related errors, returning None in such cases.
+        - Assumes the ticker is valid; validation should be performed separately (e.g., via get_quote).
+    """
+    try:
+        current_year = datetime.now().year
+        start_date = datetime(current_year, 1, 1)
+        end_date = start_date + timedelta(days=9)  # January 1 to January 10
+        start_ts = int(start_date.timestamp())
+        end_ts = int(end_date.timestamp())
+        data = client.stock_candles(ticker, 'D', start_ts, end_ts)
+        if data.get('s') == 'ok' and 'c' in data and data['c']:
+            return data['c'][0]
+        else:
+            return None
+    except FinnhubAPIException:
+        return None
