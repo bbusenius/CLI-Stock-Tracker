@@ -137,3 +137,53 @@ def get_ten_year_price(client: finnhub.Client, ticker: str) -> float | None:
     except finnhub.FinnhubAPIException:
         # Handle API errors (e.g., rate limits, network issues, invalid ticker)
         return None
+
+
+def calculate_changes(
+    quote: dict | None, ytd_price: float | None, ten_year_price: float | None
+) -> tuple[float | None, float | None, float | None]:
+    """
+    Calculates the percentage changes for daily, YTD, and 10-year periods.
+
+    Args:
+        quote (dict | None): The quote data containing 'c' (current price) and 'pc' (previous close).
+        ytd_price (float | None): The closing price at the start of the year.
+        ten_year_price (float | None): The closing price from 10 years ago.
+
+    Returns:
+        tuple[float | None, float | None, float | None]: A tuple containing daily_change,
+        ytd_change, and ten_year_change. Each change is a float representing the percentage
+        change, or None if the calculation cannot be performed.
+    """
+    if quote is None:
+        return None, None, None
+
+    current_price = quote.get('c')
+    previous_close = quote.get('pc')
+
+    # Calculate daily percentage change: ((current - previous) / previous) * 100
+    daily_change = (
+        ((current_price - previous_close) / previous_close) * 100
+        if current_price is not None
+        and previous_close is not None
+        and previous_close != 0
+        else None
+    )
+
+    # Calculate YTD percentage change: ((current - ytd) / ytd) * 100
+    ytd_change = (
+        ((current_price - ytd_price) / ytd_price) * 100
+        if current_price is not None and ytd_price is not None and ytd_price != 0
+        else None
+    )
+
+    # Calculate 10-year percentage change: ((current - ten_year) / ten_year) * 100
+    ten_year_change = (
+        ((current_price - ten_year_price) / ten_year_price) * 100
+        if current_price is not None
+        and ten_year_price is not None
+        and ten_year_price != 0
+        else None
+    )
+
+    return daily_change, ytd_change, ten_year_change
