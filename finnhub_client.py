@@ -1,187 +1,139 @@
-"""
-Finnhub API interaction module.
-
-This module provides functions to interact with the Finnhub API, including initializing the API client
-and fetching data for stocks and ETFs. It handles API key management, error handling for API calls,
-and data extraction for the Stock and ETF Price Tracker CLI tool.
-"""
-
 import os
-import sys
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import finnhub
-from finnhub.exceptions import FinnhubAPIException
-from rich import print as rprint
 
 
 def initialize_client() -> finnhub.Client:
     """
-    Initialize the Finnhub API client.
-
-    Retrieves the API key from the FINNHUB_API_KEY environment variable and creates a Finnhub client
-    instance. If the environment variable is not set, prints an error message and exits the program.
+    Initializes the Finnhub API client using the API key from the environment variable.
 
     Returns:
-        finnhub.Client: An instance of the Finnhub API client configured with the provided API key.
+        finnhub.Client: Initialized Finnhub client.
 
     Raises:
-        SystemExit: If the FINNHUB_API_KEY environment variable is not set, exits with status code 1.
-
-    Notes:
-        - The error message includes instructions for setting the environment variable, enhancing
-          user experience by guiding them to resolve the issue.
-        - This function assumes the API key is valid; validation of the key's correctness (e.g.,
-          via API calls) will be handled in subsequent steps.
+        ValueError: If the FINNHUB_API_KEY environment variable is not set.
     """
     api_key = os.getenv("FINNHUB_API_KEY")
-    if api_key is None:
-        rprint(
-            "[red]Error: FINNHUB_API_KEY environment variable is not set. "
-            "Please set it using 'export FINNHUB_API_KEY=your_api_key' and try again.[/red]"
-        )
-        sys.exit(1)
-    return finnhub.Client(api_key=api_key)
+    if not api_key:
+        raise ValueError("FINNHUB_API_KEY environment variable is not set.")
+    return finnhub.Client(api_key)
 
 
 def get_quote(client: finnhub.Client, ticker: str) -> dict | None:
     """
-    Fetch the quote data for a given ticker.
+    Fetches the current quote data for the given ticker.
 
     Args:
-        client (finnhub.Client): The Finnhub API client instance.
-        ticker (str): The stock or ETF ticker symbol (e.g., "AAPL").
+        client (finnhub.Client): Initialized Finnhub client.
+        ticker (str): Stock or ETF ticker symbol.
 
     Returns:
-        dict | None: A dictionary containing quote data (e.g., {'c': current_price, 'pc': previous_close})
-                     if the fetch is successful and the ticker is valid, otherwise None.
-
-    Notes:
-        - Quote data includes 'c' (current price), 'pc' (previous close), and other fields as provided
-          by the Finnhub API (e.g., 'h' for high, 'l' for low, 'o' for open, 't' for timestamp).
-        - Returns None if the API call raises FinnhubAPIException (e.g., network errors, rate limits,
-          or invalid API key) or if the current price ('c') is 0, indicating an invalid or non-existent
-          ticker.
-        - The assumption that a current price of 0 denotes an invalid ticker is a simplification for
-          this tool, as stocks or ETFs with a legitimate price of 0 are rare and typically delisted.
-        - Error messages are not printed here; the caller (e.g., main workflow) will handle user feedback
-          based on the None return value (e.g., displaying "Data unavailable for [TICKER]").
+        dict | None: Quote data if successful, None otherwise.
     """
     try:
-        quote = client.quote(ticker)
-        # Check if the current price is 0, suggesting an invalid ticker
-        if quote.get('c', 0) == 0:
-            return None
-        return quote
-    except FinnhubAPIException:
-        # Covers API errors (e.g., invalid key, rate limit) and network issues
+        return client.quote(ticker)
+    except finnhub.FinnhubAPIException:
         return None
 
 
 def get_profile(client: finnhub.Client, ticker: str) -> str | None:
     """
-    Fetch the company name for a given ticker from the Finnhub API.
+    Fetches the company name from the company profile for the given ticker.
 
     Args:
-        client (finnhub.Client): The Finnhub API client instance.
-        ticker (str): The stock or ETF ticker symbol (e.g., "AAPL").
+        client (finnhub.Client): Initialized Finnhub client.
+        ticker (str): Stock or ETF ticker symbol.
 
     Returns:
-        str | None: The company name if successfully fetched and available, otherwise None.
-
-    Notes:
-        - Returns None if the API call raises FinnhubAPIException (e.g., network errors, rate limits,
-          or invalid API key) or if the company name is missing or empty in the API response.
-        - The caller is responsible for handling the None return value appropriately (e.g., displaying
-          "Data unavailable for [TICKER]").
+        str | None: Company name if successful, None otherwise.
     """
     try:
         profile = client.company_profile2(symbol=ticker)
-        if isinstance(profile, dict) and 'name' in profile and profile['name']:
-            return profile['name']
-        else:
-            return None
-    except FinnhubAPIException:
+        return profile.get('name')
+    except finnhub.FinnhubAPIException:
         return None
 
 
-def get_financials(client: finnhub.Client, ticker: str) -> dict[str, float | None]:
+def get_financials(client: finnhub.Client, ticker: str) -> dict | None:
     """
-    Fetch basic financials data for a given ticker from the Finnhub API.
-
-    This function retrieves the Earnings Per Share (EPS), Price-to-Earnings (PE) ratio, and Dividend Yield
-    from the Finnhub API's basic financials endpoint. It extracts specific metrics from the API response
-    and returns them in a dictionary. If the API call fails or the required data is missing, the corresponding
-    fields in the dictionary are set to None.
+    Fetches basic financial metrics (EPS, PE ratio, dividend) for the given ticker.
 
     Args:
-        client (finnhub.Client): The Finnhub API client instance.
-        ticker (str): The stock or ETF ticker symbol (e.g., "AAPL").
+        client (finnhub.Client): Initialized Finnhub client.
+        ticker (str): Stock or ETF ticker symbol.
 
     Returns:
-        dict[str, float | None]: A dictionary containing the following keys:
-            - 'eps': Earnings Per Share (TTM) or None if unavailable.
-            - 'pe': Price-to-Earnings ratio (basic excluding extraordinary items TTM) or None if unavailable.
-            - 'dividend': Dividend Yield (TTM) or None if unavailable.
-
-    Notes:
-        - The function uses the 'company_basic_financials' endpoint of the Finnhub API.
-        - The specific metrics extracted are 'epsTTM', 'peBasicExclExtraTTM', and 'dividendYield' from the 'metric' dictionary.
-        - If the API call raises a FinnhubAPIException (e.g., due to network errors, rate limits, or invalid API key),
-          or if the 'metric' key is missing in the response, all fields are set to None.
-        - This function assumes that the ticker is valid; validation should be performed separately (e.g., via get_quote).
-        - The PE ratio uses 'peBasicExclExtraTTM' as a trailing metric, aligning with common investor use, since 'peTTM'
-          is not explicitly available in the API documentation.
+        dict | None: Dictionary with EPS, PE, and dividend if successful, None otherwise.
     """
     try:
         financials = client.company_basic_financials(ticker, 'all')
-        if 'metric' in financials:
-            metric = financials['metric']
-            return {
-                'eps': metric.get('epsTTM'),
-                'pe': metric.get('peBasicExclExtraTTM'),
-                'dividend': metric.get('dividendYield'),
-            }
-        else:
-            return {'eps': None, 'pe': None, 'dividend': None}
-    except FinnhubAPIException:
-        return {'eps': None, 'pe': None, 'dividend': None}
+        metrics = financials.get('metric', {})
+        return {
+            'eps': metrics.get('epsTTM'),
+            'pe': metrics.get('peTTM'),
+            'dividend': metrics.get('dividendYieldTTM'),
+        }
+    except finnhub.FinnhubAPIException:
+        return None
 
 
 def get_ytd_price(client: finnhub.Client, ticker: str) -> float | None:
     """
-    Fetch the historical closing price from the start of the year for YTD % change calculation.
-
-    This function retrieves daily stock candle data from January 1 to January 10 of the current year
-    and returns the closing price of the earliest available trading day within that range. This price
-    is used to calculate the Year-To-Date (YTD) percentage change.
+    Fetches the closing price from the start of the year for the given ticker.
 
     Args:
-        client (finnhub.Client): The Finnhub API client instance.
-        ticker (str): The stock or ETF ticker symbol (e.g., "AAPL").
+        client (finnhub.Client): Initialized Finnhub client.
+        ticker (str): Stock or ETF ticker symbol.
 
     Returns:
-        float | None: The closing price from the start of the year if available, otherwise None.
-
-    Notes:
-        - The date range is set from January 1 to January 10 to capture the first trading day of the year,
-          accounting for weekends and holidays when markets are closed.
-        - If no data is available within this range (e.g., for newly listed stocks), the function returns None.
-        - The function uses the 'stock_candles' endpoint with daily resolution ('D').
-        - Timestamps are converted to Unix format (seconds since epoch) for the API call.
-        - Error handling includes catching FinnhubAPIException for API-related errors, returning None in such cases.
-        - Assumes the ticker is valid; validation should be performed separately (e.g., via get_quote).
+        float | None: YTD closing price if available, None otherwise.
     """
     try:
-        current_year = datetime.now().year
-        start_date = datetime(current_year, 1, 1)
-        end_date = start_date + timedelta(days=9)  # January 1 to January 10
-        start_ts = int(start_date.timestamp())
-        end_ts = int(end_date.timestamp())
-        data = client.stock_candles(ticker, 'D', start_ts, end_ts)
-        if data.get('s') == 'ok' and 'c' in data and data['c']:
+        today = datetime.now(timezone.utc)
+        ytd_start = datetime(today.year, 1, 1, tzinfo=timezone.utc)
+        ytd_end = ytd_start + timedelta(days=10)
+        start_timestamp = int(ytd_start.timestamp())
+        end_timestamp = int(ytd_end.timestamp())
+        data = client.stock_candles(ticker, 'D', start_timestamp, end_timestamp)
+        if data['s'] == 'ok' and data['c']:
             return data['c'][0]
-        else:
-            return None
-    except FinnhubAPIException:
+        return None
+    except finnhub.FinnhubAPIException:
+        return None
+
+
+def get_ten_year_price(client: finnhub.Client, ticker: str) -> float | None:
+    """
+    Fetches the closing price from 10 years ago for the given ticker.
+
+    Args:
+        client (finnhub.Client): Initialized Finnhub client.
+        ticker (str): Stock or ETF ticker symbol.
+
+    Returns:
+        float | None: The closing price from 10 years ago, or None if unavailable.
+    """
+    try:
+        # Calculate date 10 years ago from today (approximate, ignoring leap years)
+        today = datetime.now(timezone.utc).date()
+        start_date = today - timedelta(days=365 * 10)
+        # Set start to midnight UTC
+        start_datetime = datetime.combine(
+            start_date, datetime.min.time(), tzinfo=timezone.utc
+        )
+        # End date is 5 days later to ensure a trading day is captured
+        end_datetime = start_datetime + timedelta(days=5)
+        start_timestamp = int(start_datetime.timestamp())
+        end_timestamp = int(end_datetime.timestamp())
+
+        # Fetch daily candles for the 5-day range
+        data = client.stock_candles(ticker, 'D', start_timestamp, end_timestamp)
+        if data['s'] == 'ok' and data['c']:
+            # Return the earliest closing price in the range
+            return data['c'][0]
+        # No data available (e.g., new stock or non-trading period)
+        return None
+    except finnhub.FinnhubAPIException:
+        # Handle API errors (e.g., rate limits, network issues, invalid ticker)
         return None
