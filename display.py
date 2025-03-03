@@ -10,6 +10,32 @@ from rich.console import Console
 from rich.table import Table
 
 
+def format_percentage(value: float | None) -> str:
+    """
+    Formats a percentage value with color styling.
+
+    Args:
+        value (float | None): The percentage change value.
+
+    Returns:
+        str: The formatted string with color tags if applicable.
+
+    Notes:
+        - If the value is None, returns "N/A" without styling.
+        - Positive values (> 0) are styled in green, indicating gains.
+        - Negative values (< 0) are styled in red, indicating losses.
+        - Zero values are formatted without color styling, treated as neutral.
+    """
+    if value is None:
+        return "N/A"
+    if value > 0:
+        return f"[green]{value:.2f}%[/]"
+    elif value < 0:
+        return f"[red]{value:.2f}%[/]"
+    else:
+        return f"{value:.2f}%"
+
+
 def display_table(data: list[dict]) -> None:
     """
     Displays the financial data in a formatted table.
@@ -27,7 +53,8 @@ def display_table(data: list[dict]) -> None:
         - For valid tickers, missing values (None) are displayed as 'N/A'.
         - Numerical values (Current Price, EPS, PE Ratio, Dividend) are formatted to two decimal places.
         - Percentage changes (Daily % Change, YTD % Change, 10-Year % Change) are formatted to two
-          decimal places with a '%' suffix.
+          decimal places with a '%' suffix and are highlighted in green for gains (positive values)
+          and red for losses (negative values).
         - For invalid tickers, the table shows the ticker and a message (e.g., "Data unavailable for XYZ")
           spanning the remaining columns.
         - Columns are aligned according to the design system: text (Ticker, Company Name) is left-aligned,
@@ -46,7 +73,7 @@ def display_table(data: list[dict]) -> None:
         # +-------+------------+--------------+-----+---------+----------+-------------+------------+---------------+
         # | Ticker| Company    | Current Price| EPS | PE Ratio| Dividend | Daily % Chg | YTD % Chg  | 10-Yr % Chg  |
         # +-------+------------+--------------+-----+---------+----------+-------------+------------+---------------+
-        # | AAPL  | Apple Inc. |       145.67 |5.89 |   24.70 |     0.85 |      1.23%  |    -2.34%  |     245.67%  |
+        # | AAPL  | Apple Inc. |       145.67 |5.89 |   24.70 |     0.85 |   [green]1.23%[/] |  [red]-2.34%[/] | [green]245.67%[/] |
         # | XYZ   | Data unavailable for XYZ                                                 |
         # +-------+------------+--------------+-----+---------+----------+-------------+------------+---------------+
     """
@@ -95,21 +122,9 @@ def display_table(data: list[dict]) -> None:
             dividend = (
                 f"{item['dividend']:.2f}" if item["dividend"] is not None else "N/A"
             )
-            daily_change = (
-                f"{item['daily_change']:.2f}%"
-                if item["daily_change"] is not None
-                else "N/A"
-            )
-            ytd_change = (
-                f"{item['ytd_change']:.2f}%"
-                if item["ytd_change"] is not None
-                else "N/A"
-            )
-            ten_year_change = (
-                f"{item['ten_year_change']:.2f}%"
-                if item["ten_year_change"] is not None
-                else "N/A"
-            )
+            daily_change = format_percentage(item['daily_change'])
+            ytd_change = format_percentage(item['ytd_change'])
+            ten_year_change = format_percentage(item['ten_year_change'])
 
             # Add the formatted row to the table
             table.add_row(
