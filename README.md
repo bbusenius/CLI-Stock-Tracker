@@ -11,5 +11,5 @@ Stock and ETF Price Tracker is a command-line tool that fetches and displays key
 
 1. **Clone the repository**:
    ```bash
-   git clone https://github.com/yourusername/stock-tracker.git
-   cd stock-tracker
+   git clone https://github.com/bbusenius/Stock-Tracker.git
+   cd Stock-Tracker
