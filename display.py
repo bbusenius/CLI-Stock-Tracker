@@ -36,7 +36,7 @@ def format_percentage(value: float | None) -> str:
         return f"{value:.2f}%"
 
 
-def display_table(data: list[dict]) -> None:
+def display_table(data: list[dict], debug: bool = False) -> None:
     """
     Displays the financial data in a formatted table.
 
@@ -45,6 +45,8 @@ def display_table(data: list[dict]) -> None:
             Each dictionary should have keys: 'ticker', 'company_name', 'current_price', 'eps',
             'pe_ratio', 'dividend', 'daily_change', 'ytd_change', 'ten_year_change' for valid tickers,
             or 'ticker' and 'message' for invalid tickers.
+        debug (bool, optional): If True, prints additional plain text output for test detection.
+            Defaults to False.
 
     Returns:
         None: The function prints the table to the console and does not return a value.
@@ -60,6 +62,8 @@ def display_table(data: list[dict]) -> None:
         - Columns are aligned according to the design system: text (Ticker, Company Name) is left-aligned,
           numbers are right-aligned.
         - The table adjusts to the terminal width automatically via the rich library.
+        - When debug is True, plain text outputs (e.g., headers and row data) are printed before the table
+          to assist with automated testing; these are omitted when debug is False for a clean production output.
 
     Examples:
         >>> data = [
@@ -68,14 +72,14 @@ def display_table(data: list[dict]) -> None:
         ...      'ten_year_change': 245.67},
         ...     {'ticker': 'XYZ', 'message': 'Data unavailable'}
         ... ]
-        >>> display_table(data)
-        # Outputs a table like:
-        # +-------+------------+--------------+-----+---------+----------+-------------+------------+---------------+
-        # | Ticker| Company    | Current Price| EPS | PE Ratio| Dividend | Daily % Chg | YTD % Chg  | 10-Yr % Chg  |
-        # +-------+------------+--------------+-----+---------+----------+-------------+------------+---------------+
-        # | AAPL  | Apple Inc. |       145.67 |5.89 |   24.70 |     0.85 |   [green]1.23%[/] |  [red]-2.34%[/] | [green]245.67%[/] |
-        # | XYZ   | Data unavailable for XYZ                                                 |
-        # +-------+------------+--------------+-----+---------+----------+-------------+------------+---------------+
+        >>> display_table(data, debug=False)
+        # Outputs only the table:
+        # ┏━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━━━━━━━┳━━━━━━━┳━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━┓
+        # ┃ Ticker┃ Company   ┃ Current Price ┃   EPS ┃ PE Ratio ┃ Dividend ┃ Daily % Change ┃ YTD % Change ┃ 10-Year % Change ┃
+        # ┡━━━━━━━╇━━━━━━━━━━━╇━━━━━━━━━━━━━━━╇━━━━━━━╇━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━┩
+        # │ AAPL  │ Apple Inc.│        145.67 │  5.89 │    24.70 │     0.85 │     [green]1.23%[/]│   [red]-2.34%[/]│   [green]245.67%[/]│
+        # │ XYZ   │ Data unavailable for XYZ                                                   │
+        # └───────┴───────────┴───────────────┴───────┴──────────┴──────────┴────────────────┴──────────────┴──────────────────┘
     """
     console = Console(highlight=False, markup=True)
     table = Table(show_header=True)
@@ -91,9 +95,11 @@ def display_table(data: list[dict]) -> None:
     table.add_column("YTD % Change", justify="right")
     table.add_column("10-Year % Change", justify="right")
 
-    # Print plain text headers for test detection
-    print("Headers: Ticker, Company Name, Current Price, EPS, PE Ratio, Dividend, Daily % Change, YTD % Change, 10-Year % Change")
-    
+    if debug:
+        print(
+            "Headers: Ticker, Company Name, Current Price, EPS, PE Ratio, Dividend, Daily % Change, YTD % Change, 10-Year % Change"
+        )
+
     if not data:
         console.print(table)
         return
@@ -103,10 +109,10 @@ def display_table(data: list[dict]) -> None:
             # Handle invalid ticker: display ticker and message across remaining columns
             ticker = item["ticker"]
             message = item["message"]
-            
-            # Print plain text version for test detection
-            print(f"Invalid ticker: {ticker}, Message: {message}")
-            
+
+            if debug:
+                print(f"Invalid ticker: {ticker}, Message: {message}")
+
             table.add_row(
                 ticker,
                 message,
@@ -140,9 +146,11 @@ def display_table(data: list[dict]) -> None:
             ytd_change = format_percentage(item['ytd_change'])
             ten_year_change = format_percentage(item['ten_year_change'])
 
-            # Print plain text version for test detection
-            print(f"Valid ticker: {ticker}, Company: {company_name}, Price: {current_price}, EPS: {eps}, " 
-                 f"PE: {pe_ratio}, Div: {dividend}, Daily: {daily_change}, YTD: {ytd_change}, 10Y: {ten_year_change}")
+            if debug:
+                print(
+                    f"Valid ticker: {ticker}, Company: {company_name}, Price: {current_price}, EPS: {eps}, "
+                    f"PE: {pe_ratio}, Div: {dividend}, Daily: {daily_change}, YTD: {ytd_change}, 10Y: {ten_year_change}"
+                )
 
             # Add the formatted row to the table
             table.add_row(
