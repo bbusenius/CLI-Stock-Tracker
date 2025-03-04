@@ -1,3 +1,23 @@
+"""
+Finnhub API client module for the Stock and ETF Price Tracker.
+
+This module provides functionality to interact with the Finnhub API, fetching real-time and historical
+financial data for stocks and ETFs. It is responsible for initializing the API client using an
+environment variable, retrieving data such as quotes, company profiles, financial metrics, and
+historical prices, and processing this data to calculate percentage changes (daily, year-to-date,
+and 10-year). The module is designed to handle errors gracefully, returning None or partial data
+when API calls fail, and serves as the core data-fetching component of the CLI tool.
+
+Key features include:
+- Initializing the Finnhub client with an API key from the environment.
+- Fetching current quotes, company names, financial metrics, and historical prices.
+- Calculating percentage changes based on fetched data.
+- Aggregating data into a structured format for display.
+
+All functions include error handling for API failures, invalid tickers, or missing data, ensuring
+robustness in real-world usage.
+"""
+
 import os
 from datetime import datetime, timedelta, timezone
 
