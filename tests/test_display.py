@@ -59,7 +59,7 @@ def test_display_table_valid_data(capsys):
             'ten_year_change': 245.67,
         }
     ]
-    display_table(data)
+    display_table(data, debug=True)
     captured = capsys.readouterr()
     assert "AAPL" in captured.out  # Ticker is unique and unlikely to split
     assert "Apple" in captured.out  # First part of company name
@@ -82,7 +82,7 @@ def test_display_table_invalid_ticker(capsys):
         capsys: Pytest fixture to capture console output.
     """
     data = [{'ticker': 'XYZ', 'message': 'Data unavailable'}]
-    display_table(data)
+    display_table(data, debug=True)
     captured = capsys.readouterr()
     assert "XYZ" in captured.out  # Ticker is unique
     assert "Data" in captured.out  # First part of message
@@ -109,7 +109,7 @@ def test_display_table_missing_values(capsys):
             'ten_year_change': None,
         }
     ]
-    display_table(data)
+    display_table(data, debug=True)
     captured = capsys.readouterr()
     assert "MSFT" in captured.out  # Ticker
     assert "Microsoft" in captured.out  # First part of company name
@@ -152,7 +152,7 @@ def test_display_table_multiple_items(capsys):
             'ten_year_change': None,
         },
     ]
-    display_table(data)
+    display_table(data, debug=True)
     captured = capsys.readouterr()
     # Check AAPL row
     assert "AAPL" in captured.out
@@ -180,7 +180,7 @@ def test_display_table_empty_list(capsys):
         capsys: Pytest fixture to capture console output.
     """
     data = []
-    display_table(data)
+    display_table(data, debug=True)
     captured = capsys.readouterr()
     assert "Ticker" in captured.out  # Check part of header
     assert "Company" in captured.out  # Abbreviated or split header
