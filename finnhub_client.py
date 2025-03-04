@@ -92,7 +92,7 @@ def get_financials(client: finnhub.Client, ticker: str) -> dict | None:
         return {
             'eps': metrics.get('epsTTM'),
             'pe': metrics.get('peTTM'),
-            'dividend': metrics.get('dividendYieldTTM'),
+            'dividend': metrics.get('currentDividendYieldTTM'),
         }
     except finnhub.FinnhubAPIException:
         return None

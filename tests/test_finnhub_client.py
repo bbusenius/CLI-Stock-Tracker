@@ -129,7 +129,7 @@ def test_get_financials_success():
     """
     mock_client = MagicMock()
     mock_client.company_basic_financials.return_value = {
-        'metric': {'epsTTM': 5.89, 'peTTM': 24.70, 'dividendYieldTTM': 0.85}
+        'metric': {'epsTTM': 5.89, 'peTTM': 24.70, 'currentDividendYieldTTM': 0.85}
     }
     result = get_financials(mock_client, 'AAPL')
     assert result == {'eps': 5.89, 'pe': 24.70, 'dividend': 0.85}
@@ -172,7 +172,7 @@ def test_get_financials_missing_metrics():
         'metric': {
             'epsTTM': 5.89,
             # 'peTTM' is missing
-            'dividendYieldTTM': 0.85,
+            'currentDividendYieldTTM': 0.85,
         }
     }
     result = get_financials(mock_client, 'AAPL')
