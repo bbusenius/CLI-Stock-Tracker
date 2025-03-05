@@ -1,0 +1,9 @@
+{
+  "columns": {
+    "eps": true,
+    "pe_ratio": true,
+    "dividend": true,
+    "ytd_change": false,
+    "ten_year_change": true
+  }
+}

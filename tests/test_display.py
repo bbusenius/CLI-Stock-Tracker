@@ -10,6 +10,16 @@ and the presence of expected output in the console.
 
 from display import display_table, format_percentage
 
+SAMPLE_SETTINGS = {
+    "columns": {
+        "eps": True,
+        "pe_ratio": True,
+        "dividend": True,
+        "ytd_change": True,
+        "ten_year_change": True,
+    }
+}
+
 
 def test_format_percentage_positive():
     """
@@ -59,7 +69,7 @@ def test_display_table_valid_data(capsys):
             'ten_year_change': 245.67,
         }
     ]
-    display_table(data, debug=True)
+    display_table(data, SAMPLE_SETTINGS, debug=True)
     captured = capsys.readouterr()
     assert "AAPL" in captured.out  # Ticker is unique and unlikely to split
     assert "Apple" in captured.out  # First part of company name
@@ -82,7 +92,7 @@ def test_display_table_invalid_ticker(capsys):
         capsys: Pytest fixture to capture console output.
     """
     data = [{'ticker': 'XYZ', 'message': 'Data unavailable'}]
-    display_table(data, debug=True)
+    display_table(data, SAMPLE_SETTINGS, debug=True)
     captured = capsys.readouterr()
     assert "XYZ" in captured.out  # Ticker is unique
     assert "Data" in captured.out  # First part of message
@@ -109,7 +119,7 @@ def test_display_table_missing_values(capsys):
             'ten_year_change': None,
         }
     ]
-    display_table(data, debug=True)
+    display_table(data, SAMPLE_SETTINGS, debug=True)
     captured = capsys.readouterr()
     assert "MSFT" in captured.out  # Ticker
     assert "Microsoft" in captured.out  # First part of company name
@@ -152,7 +162,7 @@ def test_display_table_multiple_items(capsys):
             'ten_year_change': None,
         },
     ]
-    display_table(data, debug=True)
+    display_table(data, SAMPLE_SETTINGS, debug=True)
     captured = capsys.readouterr()
     # Check AAPL row
     assert "AAPL" in captured.out
@@ -180,10 +190,52 @@ def test_display_table_empty_list(capsys):
         capsys: Pytest fixture to capture console output.
     """
     data = []
-    display_table(data, debug=True)
+    display_table(data, SAMPLE_SETTINGS, debug=True)
     captured = capsys.readouterr()
     assert "Ticker" in captured.out  # Check part of header
     assert "Company" in captured.out  # Abbreviated or split header
     assert "Price" in captured.out  # Abbreviated or split header
     assert "AAPL" not in captured.out  # No data rows
     assert "Data" not in captured.out  # No invalid ticker messages
+
+
+def test_display_table_no_eps_pe(capsys):
+    """
+    Test that display_table does not include EPS and PE Ratio when they are disabled in settings.
+
+    Args:
+        capsys: Pytest fixture to capture console output.
+    """
+    settings = {
+        "columns": {
+            "eps": False,
+            "pe_ratio": False,
+            "dividend": True,
+            "ytd_change": True,
+            "ten_year_change": True,
+        }
+    }
+    data = [
+        {
+            'ticker': 'AAPL',
+            'company_name': 'Apple Inc.',
+            'current_price': 145.67,
+            'eps': 5.89,
+            'pe_ratio': 24.70,
+            'dividend': 0.85,
+            'daily_change': 1.23,
+            'ytd_change': -2.34,
+            'ten_year_change': 245.67,
+        }
+    ]
+    display_table(data, settings, debug=True)
+    captured = capsys.readouterr()
+    assert "AAPL" in captured.out
+    assert "Apple" in captured.out
+    assert "145.67" in captured.out
+    assert "1.23%" in captured.out
+    assert "0.85" in captured.out  # Dividend
+    assert "-2.34%" in captured.out  # YTD
+    assert "245.67%" in captured.out  # 10-Year
+    assert "5.89" not in captured.out  # EPS should not be present
+    assert "24.70" not in captured.out  # PE Ratio should not be present

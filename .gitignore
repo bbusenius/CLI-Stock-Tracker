@@ -19,6 +19,7 @@ __pycache__/
 
 # User-specific configuration
 tickers.json
+settings.json
 
 # AI stuff
 Prompts

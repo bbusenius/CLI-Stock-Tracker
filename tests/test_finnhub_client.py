@@ -502,7 +502,16 @@ def test_fetch_ticker_data_success():
         'finnhub_client.get_ten_year_price', return_value=50.0
     ):
         client = MagicMock()
-        result = fetch_ticker_data(client, 'AAPL')
+        settings = {
+            "columns": {
+                "eps": True,
+                "pe_ratio": True,
+                "dividend": True,
+                "ytd_change": True,
+                "ten_year_change": True
+            }
+        }
+        result = fetch_ticker_data(client, 'AAPL', settings)
         assert result == {
             'ticker': 'AAPL',
             'company_name': 'Apple Inc.',
@@ -528,7 +537,16 @@ def test_fetch_ticker_data_invalid_ticker():
     """
     with patch('finnhub_client.get_quote', return_value=None):
         client = MagicMock()
-        result = fetch_ticker_data(client, 'INVALID')
+        settings = {
+            "columns": {
+                "eps": True,
+                "pe_ratio": True,
+                "dividend": True,
+                "ytd_change": True,
+                "ten_year_change": True
+            }
+        }
+        result = fetch_ticker_data(client, 'INVALID', settings)
         assert result == {'ticker': 'INVALID', 'message': 'Data unavailable'}
 
 
@@ -552,7 +570,16 @@ def test_fetch_ticker_data_missing_financials():
         'finnhub_client.get_ten_year_price', return_value=50.0
     ):
         client = MagicMock()
-        result = fetch_ticker_data(client, 'AAPL')
+        settings = {
+            "columns": {
+                "eps": True,
+                "pe_ratio": True,
+                "dividend": True,
+                "ytd_change": True,
+                "ten_year_change": True
+            }
+        }
+        result = fetch_ticker_data(client, 'AAPL', settings)
         assert result == {
             'ticker': 'AAPL',
             'company_name': 'Apple Inc.',
@@ -587,7 +614,16 @@ def test_fetch_ticker_data_missing_historical():
         'finnhub_client.get_ten_year_price', return_value=None
     ):
         client = MagicMock()
-        result = fetch_ticker_data(client, 'AAPL')
+        settings = {
+            "columns": {
+                "eps": True,
+                "pe_ratio": True,
+                "dividend": True,
+                "ytd_change": True,
+                "ten_year_change": True
+            }
+        }
+        result = fetch_ticker_data(client, 'AAPL', settings)
         assert result == {
             'ticker': 'AAPL',
             'company_name': 'Apple Inc.',

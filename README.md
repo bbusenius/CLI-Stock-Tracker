@@ -60,7 +60,14 @@ python main.py
 This will fetch the financial data for the specified tickers and display it in a formatted table.
 
 ## Configuration
-- The tool reads the list of tickers from tickers.json. This file should contain a JSON array of ticker symbols, e.g., ["AAPL", "MSFT"].
+- **Tickers**: The tool reads the list of tickers from tickers.json. This file should contain a JSON array of ticker symbols, e.g., `["AAPL", "MSFT"]`.
+- **Display Settings**: The tool reads display settings from `settings.json`. This file should contain a JSON object with a "columns" key, specifying which optional columns to include:
+  - `eps`: Include the EPS column.
+  - `pe_ratio`: Include the PE Ratio column.
+  - `dividend`: Include the Dividend column (may be missing for some tickers).
+  - `ytd_change`: Include the YTD % Change column (requires historical data access).
+  - `ten_year_change`: Include the 10-Year % Change column (requires historical data access).
+- If `settings.json` is not present or invalid, the tool defaults to excluding these optional columns, ensuring stability on the free Finnhub plan where historical data calls may return 403 errors.
 - Ensure that tickers.json is present in the project root directory.
 
 ## API Rate Limits
