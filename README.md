@@ -1,5 +1,5 @@
-# Stock and ETF Price Tracker
-Stock and ETF Price Tracker is a command-line tool that fetches and displays key financial metrics for a configurable list of stock and ETF tickers using the [Finnhub API](https://finnhub.io/). It provides real-time data on stock prices, earnings, dividends, and more, formatted in a readable table using the rich library.
+# CLI Stock and ETF Price Tracker
+CLI Stock and ETF Price Tracker is a command-line tool that fetches and displays key financial metrics for a configurable list of stock and ETF tickers using the [Finnhub API](https://finnhub.io/). It provides real-time data on stock prices, earnings, dividends, and more, formatted in a readable table using the rich library.
 
 ## Prerequisites
 - Python 3.12: Ensure you have Python 3.12 installed on your system.
@@ -9,8 +9,8 @@ Stock and ETF Price Tracker is a command-line tool that fetches and displays key
 
 ### 1.  Clone the repository:
 ```
-git clone https://github.com/bbusenius/Stock-Tracker.git
-cd Stock-Tracker
+git clone https://github.com/bbusenius/CLI-Stock-Tracker.git
+cd CLI-Stock-Tracker
 ```
 
 ### 2.  Create and activate a virtual environment:
