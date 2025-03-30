@@ -12,38 +12,52 @@ import json
 from rich import print as rprint
 
 
-def load_tickers(file_path: str) -> list[str]:
+def load_tickers(file_path: str) -> list[dict]:
     """
-    Load the list of tickers from a JSON file.
+    Load the list of tickers from a JSON file, supporting both string and object formats.
 
     Args:
-        file_path (str): The path to the JSON file containing the list of tickers.
+        file_path (str): Path to the JSON file containing the list of tickers.
 
     Returns:
-        list[str]: A list of ticker symbols if successfully loaded, otherwise an empty list.
+        list[dict]: A list of dictionaries, each with 'ticker' (str) and optionally 'name' (str or None).
 
     Notes:
-        If the file is missing, cannot be read, or contains invalid JSON (e.g., not a list), an error
-        message is printed to the console using `rich`, and an empty list is returned. This allows
-        the program to continue execution without crashing, deferring further handling to the
-        caller (e.g., the main script).
-
-    Examples:
-        >>> load_tickers("tickers.json")  # With a valid file ["AAPL", "MSFT"]
-        ['AAPL', 'MSFT']
-        >>> load_tickers("missing.json")  # With a missing file
-        [red]Error loading tickers from missing.json: [Errno 2] No such file or directory[/red]
-        []
+        The JSON file can contain either:
+        - A list of strings (e.g., ["AAPL", "MSFT"]), converted to {"ticker": str, "name": None}.
+        - A list of objects (e.g., [{"ticker": "AAPL", "name": "Apple Inc."}, {"ticker": "MSFT"}]),
+          where "ticker" is required and "name" is optional.
+        Invalid entries (e.g., missing "ticker" or non-string types) are skipped with a warning.
+        If the file is missing, unreadable, or contains invalid JSON, an error is printed, and an empty list is returned.
     """
     try:
         with open(file_path, 'r') as f:
-            tickers = json.load(f)
-        # Validate that the loaded data is a list
-        if not isinstance(tickers, list):
+            data = json.load(f)
+        if not isinstance(data, list):
             raise ValueError("Tickers must be a list")
+        tickers = []
+        for item in data:
+            if isinstance(item, str):
+                tickers.append({"ticker": item, "name": None})
+            elif isinstance(item, dict):
+                if "ticker" in item and isinstance(item["ticker"], str):
+                    name = item.get("name")
+                    if name is not None and not isinstance(name, str):
+                        rprint(
+                            f"[yellow]Warning: Invalid 'name' for ticker {item['ticker']}, must be a string. Ignoring name.[/yellow]"
+                        )
+                        name = None
+                    tickers.append({"ticker": item["ticker"], "name": name})
+                else:
+                    rprint(
+                        f"[yellow]Warning: Invalid ticker entry {item}, missing 'ticker' key or invalid type. Skipping.[/yellow]"
+                    )
+            else:
+                rprint(
+                    f"[yellow]Warning: Invalid ticker entry {item}, must be a string or dictionary. Skipping.[/yellow]"
+                )
         return tickers
     except (FileNotFoundError, json.JSONDecodeError, ValueError) as e:
-        # Print error message in red using rich and return empty list
         rprint(f"[red]Error loading tickers from {file_path}: {e}[/red]")
         return []
 
@@ -53,34 +67,14 @@ def load_settings(file_path: str) -> dict:
     Load display settings from a JSON file.
 
     Args:
-        file_path (str): The path to the JSON file containing display settings.
+        file_path (str): Path to the JSON file containing display settings.
 
     Returns:
-        dict: A dictionary of settings if successfully loaded, otherwise default settings.
+        dict: Settings dictionary if loaded successfully, otherwise default settings.
 
     Notes:
-        The settings file should contain a JSON object with a "columns" key, which is a dictionary
-        indicating which optional columns to include in the display table. For example:
-        {
-            "columns": {
-                "eps": true,
-                "pe_ratio": true,
-                "dividend": true,
-                "ytd_change": false,
-                "ten_year_change": true
-            }
-        }
-        If the file is missing, cannot be read, or contains invalid JSON, a warning is printed,
-        and default settings are returned with all optional columns disabled. This ensures that
-        optional columns (EPS, PE Ratio, Dividend, YTD % Change, 10-Year % Change) are excluded
-        by default, avoiding errors or missing data due to API limitations.
-
-    Examples:
-        >>> load_settings("settings.json")  # With a valid file
-        {'columns': {'eps': True, 'pe_ratio': True, 'dividend': True, 'ytd_change': False, 'ten_year_change': True}}
-        >>> load_settings("missing.json")  # With a missing file
-        [yellow]Warning: Could not load settings from missing.json: [Errno 2] No such file or directory. Using default settings.[/yellow]
-        {'columns': {'eps': False, 'pe_ratio': False, 'dividend': False, 'ytd_change': False, 'ten_year_change': False}}
+        Expected format: {"columns": {"eps": bool, "pe_ratio": bool, "dividend": bool, "ytd_change": bool, "ten_year_change": bool}}.
+        If the file is missing, unreadable, or invalid, a warning is printed, and defaults are returned with all columns disabled.
     """
     default_settings = {
         "columns": {
@@ -94,11 +88,9 @@ def load_settings(file_path: str) -> dict:
     try:
         with open(file_path, 'r') as f:
             settings = json.load(f)
-        # Ensure "columns" key exists
         if "columns" not in settings:
             settings["columns"] = default_settings["columns"]
         else:
-            # Fill in missing column settings with defaults
             for col in default_settings["columns"]:
                 if col not in settings["columns"]:
                     settings["columns"][col] = default_settings["columns"][col]

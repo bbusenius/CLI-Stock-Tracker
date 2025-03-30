@@ -63,8 +63,8 @@ def main():
 
     # Fetch data for each ticker, passing settings
     data = []
-    for ticker in tickers:
-        ticker_data = fetch_ticker_data(client, ticker, settings)
+    for ticker_obj in tickers:
+        ticker_data = fetch_ticker_data(client, ticker_obj, settings)
         data.append(ticker_data)
 
     # Display the data in a table, passing settings
