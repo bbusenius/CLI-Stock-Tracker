@@ -113,6 +113,7 @@ The tool includes an optional caching system storing API results in `cache.json`
     "interval": 60
   }
 }
+```
 
 ## API Rate Limits
 - Free tier limit: 60 API calls per minute.
