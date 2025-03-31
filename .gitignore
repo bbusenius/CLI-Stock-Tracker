@@ -21,5 +21,8 @@ __pycache__/
 tickers.json
 settings.json
 
+# Ticker cache
+cache.json
+
 # AI stuff
 Prompts

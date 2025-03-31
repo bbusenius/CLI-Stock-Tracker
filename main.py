@@ -1,74 +1,86 @@
 #!/usr/bin/env python3
 """
 Main script for the Stock and ETF Price Tracker CLI tool.
-
-This script orchestrates the workflow by loading the list of tickers and display settings,
-fetching financial data for each ticker using the Finnhub API, and displaying the results
-in a formatted table. It serves as the entry point for the command-line interface, integrating
-the configuration, API client, and display modules to provide a seamless user experience.
+Supports normal mode for displaying data and daemon mode for background cache updates.
 """
+
+import argparse
+import time
 
 from rich import print as rprint
 
+from cache import get_cached_data, get_cached_data_unchecked, update_cache
 from config import load_settings, load_tickers
 from display import display_table
 from finnhub_client import fetch_ticker_data, initialize_client
 
 
+def daemon_mode(client, tickers, settings):
+    """Run in daemon mode to periodically update the cache."""
+    interval = settings["cache"]["interval"] * 60  # Convert minutes to seconds
+    while True:
+        for ticker_obj in tickers:
+            data = fetch_ticker_data(client, ticker_obj, settings)
+            if "message" not in data:
+                update_cache(ticker_obj["ticker"], data)
+            time.sleep(1)  # Respect API rate limits
+        time.sleep(interval)  # Wait before next cycle
+
+
 def main():
-    """
-    Main function to run the Stock and ETF Price Tracker.
+    parser = argparse.ArgumentParser(description="CLI Stock and ETF Price Tracker")
+    parser.add_argument("--refresh", action="store_true", help="Force fetch fresh data")
+    parser.add_argument("--daemon", action="store_true", help="Run in daemon mode")
+    args = parser.parse_args()
 
-    This function performs the following steps:
-    1. Loads the display settings from 'settings.json'.
-    2. Loads the list of tickers from 'tickers.json'.
-    3. Initializes the Finnhub API client using the API key from the environment variable.
-    4. Fetches financial data for each ticker, considering the display settings.
-    5. Displays the collected data in a formatted table using the rich library, based on the settings.
-
-    Args:
-        None
-
-    Returns:
-        None: The function executes the workflow and prints output to the console.
-
-    Notes:
-        - If the ticker list is empty (e.g., due to a missing or invalid 'tickers.json' file),
-          it prints a red error message using rich and exits.
-        - If the API key is not set, it catches the ValueError from initialize_client(),
-          prints a red error message, and exits.
-        - The function fetches data sequentially for each ticker, respecting the Finnhub API's
-          rate limit of 60 calls per minute (up to 12 tickers without delays when all columns
-          are enabled, fewer calls if optional columns are disabled).
-        - Display settings determine which optional columns (Dividend, YTD % Change, 10-Year % Change)
-          are fetched and displayed, with defaults excluding them to avoid API errors or missing data.
-        - Edge cases like invalid tickers or unavailable data are handled by fetch_ticker_data(),
-          which returns a dict with a 'message' key, displayed appropriately by display_table().
-    """
-    # Load display settings
-    settings = load_settings('settings.json')
-
-    # Load tickers from configuration file
-    tickers = load_tickers('tickers.json')
-    if not tickers:
-        rprint("[red]No tickers to process. Please check your tickers.json file.[/red]")
-        return
-
-    # Initialize Finnhub API client
-    try:
+    if args.daemon:
+        settings = load_settings("settings.json")
+        tickers = load_tickers("tickers.json")
+        if not tickers:
+            rprint("[red]No tickers to process in daemon mode.[/red]")
+            return
         client = initialize_client()
-    except ValueError as e:
-        rprint(f"[red]Error: {e}[/red]")
-        return
-
-    # Fetch data for each ticker, passing settings
-    data = []
-    for ticker_obj in tickers:
-        ticker_data = fetch_ticker_data(client, ticker_obj, settings)
-        data.append(ticker_data)
-
-    # Display the data in a table, passing settings
-    display_table(data, settings)
+        daemon_mode(client, tickers, settings)
+    else:
+        settings = load_settings("settings.json")
+        tickers = load_tickers("tickers.json")
+        if not tickers:
+            rprint("[red]No tickers to process.[/red]")
+            return
+        client = initialize_client()
+        data = []
+        failed_refreshes = []
+        for ticker_obj in tickers:
+            ticker = ticker_obj["ticker"]
+            cache_enabled = settings["cache"]["enabled"]
+            interval = settings["cache"]["interval"]
+            if cache_enabled and not args.refresh:
+                cached_data = get_cached_data(ticker, interval)
+                if cached_data is not None:
+                    data.append(cached_data)
+                    continue
+            fresh_data = fetch_ticker_data(client, ticker_obj, settings)
+            if "message" not in fresh_data:
+                if cache_enabled:
+                    update_cache(ticker, fresh_data)
+                data.append(fresh_data)
+            else:
+                if cache_enabled:
+                    cached_data = get_cached_data_unchecked(ticker)
+                    if cached_data is not None:
+                        data.append(cached_data)
+                        failed_refreshes.append(ticker)
+                    else:
+                        data.append(fresh_data)
+                else:
+                    data.append(fresh_data)
+        display_table(data, settings)
+        if failed_refreshes:
+            rprint(
+                "[yellow]Warning: Used cached data for some tickers due to refresh failures:[/yellow]"
+            )
+            for ticker in failed_refreshes:
+                rprint(f"[yellow]- {ticker}[/yellow]")
 
 
 if __name__ == "__main__":

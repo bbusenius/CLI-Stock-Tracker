@@ -5,5 +5,9 @@
     "dividend": true,
     "ytd_change": false,
     "ten_year_change": true
+  },
+  "cache": {
+    "enabled": true,
+    "interval": 60
   }
 }
