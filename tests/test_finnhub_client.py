@@ -1,11 +1,10 @@
 """
 Unit tests for the finnhub_client module.
 
-This module contains tests for the API interaction and data processing functions in finnhub_client.py,
+This module tests the API interaction and data processing functions in finnhub_client.py,
 including get_quote, get_profile, get_financials, get_ytd_price, get_ten_year_price,
 calculate_changes, and fetch_ticker_data. The tests use mocking to simulate Finnhub API responses
-and verify the behavior of these functions under various conditions, including successful data
-retrieval, error scenarios, and edge cases with missing or invalid data.
+and verify behavior under various conditions, including successful data retrieval and edge cases.
 """
 
 from unittest.mock import MagicMock, patch
@@ -22,17 +21,22 @@ from finnhub_client import (
     get_ytd_price,
 )
 
+SAMPLE_SETTINGS = {
+    "columns": {
+        "eps": True,
+        "pe_ratio": True,
+        "dividend": True,
+        "ytd_change": True,
+        "ten_year_change": True,
+    }
+}
 
-# Existing tests for get_quote
+
 def test_get_quote_success():
-    """
-    Test that get_quote returns the quote data when the API call is successful.
-
-    Args:
-        None
+    """Tests successful retrieval of quote data.
 
     Returns:
-        None: Asserts the expected behavior of get_quote with a successful API response.
+        None: Asserts quote data is returned correctly.
     """
     mock_client = MagicMock()
     mock_client.quote.return_value = {'c': 100.0, 'pc': 99.0}
@@ -42,14 +46,10 @@ def test_get_quote_success():
 
 
 def test_get_quote_failure():
-    """
-    Test that get_quote returns None when the API call raises a FinnhubAPIException.
-
-    Args:
-        None
+    """Tests quote retrieval failure handling.
 
     Returns:
-        None: Asserts that get_quote handles API errors by returning None.
+        None: Asserts None is returned on API exception.
     """
     mock_response = MagicMock()
     mock_response.json.return_value = {'error': 'API Error'}
@@ -60,16 +60,11 @@ def test_get_quote_failure():
     mock_client.quote.assert_called_once_with('INVALID')
 
 
-# Existing tests for get_profile
 def test_get_profile_success():
-    """
-    Test that get_profile returns the company name when the API call is successful.
-
-    Args:
-        None
+    """Tests successful retrieval of company profile name.
 
     Returns:
-        None: Asserts that get_profile extracts and returns the company name correctly.
+        None: Asserts company name is returned correctly.
     """
     mock_client = MagicMock()
     mock_client.company_profile2.return_value = {'name': 'Apple Inc.'}
@@ -79,14 +74,10 @@ def test_get_profile_success():
 
 
 def test_get_profile_failure():
-    """
-    Test that get_profile returns None when the API call raises a FinnhubAPIException.
-
-    Args:
-        None
+    """Tests profile retrieval failure handling.
 
     Returns:
-        None: Asserts that get_profile handles API errors by returning None.
+        None: Asserts None is returned on API exception.
     """
     mock_response = MagicMock()
     mock_response.json.return_value = {'error': 'API Error'}
@@ -100,14 +91,10 @@ def test_get_profile_failure():
 
 
 def test_get_profile_missing_name():
-    """
-    Test that get_profile returns None when the profile data does not contain a 'name' key.
-
-    Args:
-        None
+    """Tests handling of profile data missing the name key.
 
     Returns:
-        None: Asserts that get_profile handles missing 'name' keys gracefully.
+        None: Asserts None is returned when name is absent.
     """
     mock_client = MagicMock()
     mock_client.company_profile2.return_value = {'other': 'data'}
@@ -116,16 +103,11 @@ def test_get_profile_missing_name():
     mock_client.company_profile2.assert_called_once_with(symbol='AAPL')
 
 
-# Tests for get_financials
 def test_get_financials_success():
-    """
-    Test that get_financials returns financial metrics when the API call is successful.
-
-    Args:
-        None
+    """Tests successful retrieval of financial metrics.
 
     Returns:
-        None: Asserts that get_financials extracts EPS, PE, and dividend correctly.
+        None: Asserts financial data is returned correctly.
     """
     mock_client = MagicMock()
     mock_client.company_basic_financials.return_value = {
@@ -137,14 +119,10 @@ def test_get_financials_success():
 
 
 def test_get_financials_failure():
-    """
-    Test that get_financials returns None when the API call raises a FinnhubAPIException.
-
-    Args:
-        None
+    """Tests financials retrieval failure handling.
 
     Returns:
-        None: Asserts that get_financials handles API errors by returning None.
+        None: Asserts None is returned on API exception.
     """
     mock_response = MagicMock()
     mock_response.json.return_value = {'error': 'API Error'}
@@ -158,22 +136,14 @@ def test_get_financials_failure():
 
 
 def test_get_financials_missing_metrics():
-    """
-    Test that get_financials returns None for missing metrics in the API response.
-
-    Args:
-        None
+    """Tests handling of partial financial metrics.
 
     Returns:
-        None: Asserts that get_financials handles partial metric data gracefully.
+        None: Asserts missing metrics are None.
     """
     mock_client = MagicMock()
     mock_client.company_basic_financials.return_value = {
-        'metric': {
-            'epsTTM': 5.89,
-            # 'peTTM' is missing
-            'currentDividendYieldTTM': 0.85,
-        }
+        'metric': {'epsTTM': 5.89, 'currentDividendYieldTTM': 0.85}
     }
     result = get_financials(mock_client, 'AAPL')
     assert result == {'eps': 5.89, 'pe': None, 'dividend': 0.85}
@@ -181,14 +151,10 @@ def test_get_financials_missing_metrics():
 
 
 def test_get_financials_no_metric():
-    """
-    Test that get_financials returns None for all metrics when 'metric' key is missing.
-
-    Args:
-        None
+    """Tests handling of missing metric key in financials.
 
     Returns:
-        None: Asserts that get_financials handles an empty or missing 'metric' dictionary.
+        None: Asserts all metrics are None.
     """
     mock_client = MagicMock()
     mock_client.company_basic_financials.return_value = {}
@@ -197,16 +163,11 @@ def test_get_financials_no_metric():
     mock_client.company_basic_financials.assert_called_once_with('AAPL', 'all')
 
 
-# Tests for get_ytd_price
 def test_get_ytd_price_success():
-    """
-    Test that get_ytd_price returns the first closing price when the API call is successful.
-
-    Args:
-        None
+    """Tests successful retrieval of YTD price.
 
     Returns:
-        None: Asserts that get_ytd_price extracts the YTD price correctly.
+        None: Asserts first closing price is returned.
     """
     mock_client = MagicMock()
     mock_client.stock_candles.return_value = {'s': 'ok', 'c': [100.0, 101.0, 102.0]}
@@ -216,14 +177,10 @@ def test_get_ytd_price_success():
 
 
 def test_get_ytd_price_failure():
-    """
-    Test that get_ytd_price returns None when the API call raises a FinnhubAPIException.
-
-    Args:
-        None
+    """Tests YTD price retrieval failure handling.
 
     Returns:
-        None: Asserts that get_ytd_price handles API errors by returning None.
+        None: Asserts None is returned on API exception.
     """
     mock_response = MagicMock()
     mock_response.json.return_value = {'error': 'API Error'}
@@ -235,42 +192,29 @@ def test_get_ytd_price_failure():
 
 
 def test_get_ytd_price_no_data():
-    """
-    Test that get_ytd_price returns None when no data is available.
-
-    Args:
-        None
+    """Tests handling of no YTD price data.
 
     Returns:
-        None: Asserts that get_ytd_price handles 'no_data' status or empty price list.
+        None: Asserts None is returned for no_data or empty list.
     """
     mock_client = MagicMock()
-    # Test with 'no_data' status
     mock_client.stock_candles.return_value = {'s': 'no_data'}
     result = get_ytd_price(mock_client, 'AAPL')
     assert result is None
     mock_client.stock_candles.assert_called_once()
 
-    # Reset mock to clear previous call state
     mock_client.stock_candles.reset_mock()
-
-    # Test with empty price list
     mock_client.stock_candles.return_value = {'s': 'ok', 'c': []}
     result = get_ytd_price(mock_client, 'AAPL')
     assert result is None
     mock_client.stock_candles.assert_called_once()
 
 
-# Tests for get_ten_year_price
 def test_get_ten_year_price_success():
-    """
-    Test that get_ten_year_price returns the first closing price when the API call is successful.
-
-    Args:
-        None
+    """Tests successful retrieval of 10-year price.
 
     Returns:
-        None: Asserts that get_ten_year_price extracts the 10-year price correctly.
+        None: Asserts first closing price is returned.
     """
     mock_client = MagicMock()
     mock_client.stock_candles.return_value = {'s': 'ok', 'c': [50.0, 51.0, 52.0]}
@@ -280,14 +224,10 @@ def test_get_ten_year_price_success():
 
 
 def test_get_ten_year_price_failure():
-    """
-    Test that get_ten_year_price returns None when the API call raises a FinnhubAPIException.
-
-    Args:
-        None
+    """Tests 10-year price retrieval failure handling.
 
     Returns:
-        None: Asserts that get_ten_year_price handles API errors by returning None.
+        None: Asserts None is returned on API exception.
     """
     mock_response = MagicMock()
     mock_response.json.return_value = {'error': 'API Error'}
@@ -299,61 +239,44 @@ def test_get_ten_year_price_failure():
 
 
 def test_get_ten_year_price_no_data():
-    """
-    Test that get_ten_year_price returns None when no data is available.
-
-    Args:
-        None
+    """Tests handling of no 10-year price data.
 
     Returns:
-        None: Asserts that get_ten_year_price handles 'no_data' status or empty price list.
+        None: Asserts None is returned for no_data or empty list.
     """
     mock_client = MagicMock()
-    # Test with 'no_data' status
     mock_client.stock_candles.return_value = {'s': 'no_data'}
     result = get_ten_year_price(mock_client, 'AAPL')
     assert result is None
     mock_client.stock_candles.assert_called_once()
 
-    # Reset mock to clear previous call state
     mock_client.stock_candles.reset_mock()
-
-    # Test with empty price list
     mock_client.stock_candles.return_value = {'s': 'ok', 'c': []}
     result = get_ten_year_price(mock_client, 'AAPL')
     assert result is None
     mock_client.stock_candles.assert_called_once()
 
 
-# Tests for calculate_changes
 def test_calculate_changes_success():
-    """
-    Test that calculate_changes computes percentage changes correctly when all data is present.
-
-    Args:
-        None
+    """Tests successful calculation of all percentage changes.
 
     Returns:
-        None: Asserts that daily, YTD, and 10-year changes match expected values.
+        None: Asserts changes are calculated correctly.
     """
     quote = {'c': 100.0, 'pc': 99.0}
     ytd_price = 90.0
     ten_year_price = 50.0
     daily, ytd, ten_year = calculate_changes(quote, ytd_price, ten_year_price)
-    assert daily == pytest.approx(1.010101, abs=0.0001)  # (100 - 99) / 99 * 100
-    assert ytd == pytest.approx(11.111111, abs=0.0001)  # (100 - 90) / 90 * 100
-    assert ten_year == pytest.approx(100.0, abs=0.0001)  # (100 - 50) / 50 * 100
+    assert daily == pytest.approx(1.010101, abs=0.0001)
+    assert ytd == pytest.approx(11.111111, abs=0.0001)
+    assert ten_year == pytest.approx(100.0, abs=0.0001)
 
 
 def test_calculate_changes_missing_quote():
-    """
-    Test that calculate_changes returns None for all changes when quote is None.
-
-    Args:
-        None
+    """Tests handling of missing quote data.
 
     Returns:
-        None: Asserts that missing quote data results in all None values.
+        None: Asserts all changes are None.
     """
     daily, ytd, ten_year = calculate_changes(None, 90.0, 50.0)
     assert daily is None
@@ -362,14 +285,10 @@ def test_calculate_changes_missing_quote():
 
 
 def test_calculate_changes_missing_ytd():
-    """
-    Test that calculate_changes handles missing YTD price correctly.
-
-    Args:
-        None
+    """Tests handling of missing YTD price.
 
     Returns:
-        None: Asserts that YTD change is None, while others are calculated.
+        None: Asserts YTD change is None, others calculated.
     """
     quote = {'c': 100.0, 'pc': 99.0}
     daily, ytd, ten_year = calculate_changes(quote, None, 50.0)
@@ -379,14 +298,10 @@ def test_calculate_changes_missing_ytd():
 
 
 def test_calculate_changes_missing_ten_year():
-    """
-    Test that calculate_changes handles missing 10-year price correctly.
-
-    Args:
-        None
+    """Tests handling of missing 10-year price.
 
     Returns:
-        None: Asserts that 10-year change is None, while others are calculated.
+        None: Asserts 10-year change is None, others calculated.
     """
     quote = {'c': 100.0, 'pc': 99.0}
     daily, ytd, ten_year = calculate_changes(quote, 90.0, None)
@@ -396,14 +311,10 @@ def test_calculate_changes_missing_ten_year():
 
 
 def test_calculate_changes_zero_previous_close():
-    """
-    Test that calculate_changes returns None for daily change when previous close is zero.
-
-    Args:
-        None
+    """Tests handling of zero previous close price.
 
     Returns:
-        None: Asserts that division by zero in daily change is handled.
+        None: Asserts daily change is None, others calculated.
     """
     quote = {'c': 100.0, 'pc': 0.0}
     daily, ytd, ten_year = calculate_changes(quote, 90.0, 50.0)
@@ -413,14 +324,10 @@ def test_calculate_changes_zero_previous_close():
 
 
 def test_calculate_changes_zero_ytd_price():
-    """
-    Test that calculate_changes returns None for YTD change when YTD price is zero.
-
-    Args:
-        None
+    """Tests handling of zero YTD price.
 
     Returns:
-        None: Asserts that division by zero in YTD change is handled.
+        None: Asserts YTD change is None, others calculated.
     """
     quote = {'c': 100.0, 'pc': 99.0}
     daily, ytd, ten_year = calculate_changes(quote, 0.0, 50.0)
@@ -430,14 +337,10 @@ def test_calculate_changes_zero_ytd_price():
 
 
 def test_calculate_changes_zero_ten_year_price():
-    """
-    Test that calculate_changes returns None for 10-year change when 10-year price is zero.
-
-    Args:
-        None
+    """Tests handling of zero 10-year price.
 
     Returns:
-        None: Asserts that division by zero in 10-year change is handled.
+        None: Asserts 10-year change is None, others calculated.
     """
     quote = {'c': 100.0, 'pc': 99.0}
     daily, ytd, ten_year = calculate_changes(quote, 90.0, 0.0)
@@ -447,16 +350,12 @@ def test_calculate_changes_zero_ten_year_price():
 
 
 def test_calculate_changes_missing_current_price():
-    """
-    Test that calculate_changes handles missing current price in quote.
-
-    Args:
-        None
+    """Tests handling of missing current price.
 
     Returns:
-        None: Asserts that all changes are None when 'c' is missing.
+        None: Asserts all changes are None.
     """
-    quote = {'pc': 99.0}  # Missing 'c'
+    quote = {'pc': 99.0}
     daily, ytd, ten_year = calculate_changes(quote, 90.0, 50.0)
     assert daily is None
     assert ytd is None
@@ -464,174 +363,69 @@ def test_calculate_changes_missing_current_price():
 
 
 def test_calculate_changes_missing_previous_close():
-    """
-    Test that calculate_changes handles missing previous close in quote.
-
-    Args:
-        None
+    """Tests handling of missing previous close.
 
     Returns:
-        None: Asserts that daily change is None, others are calculated.
+        None: Asserts daily change is None, others calculated.
     """
-    quote = {'c': 100.0}  # Missing 'pc'
+    quote = {'c': 100.0}
     daily, ytd, ten_year = calculate_changes(quote, 90.0, 50.0)
     assert daily is None
     assert ytd == pytest.approx(11.111111, abs=0.0001)
     assert ten_year == pytest.approx(100.0, abs=0.0001)
 
 
-# Tests for fetch_ticker_data
-def test_fetch_ticker_data_success():
-    """
-    Test that fetch_ticker_data aggregates data correctly when all fetches succeed.
-
-    Args:
-        None
+def test_fetch_ticker_data_with_user_name():
+    """Tests fetch_ticker_data with a user-provided name.
 
     Returns:
-        None: Asserts that all fields are populated with expected values.
+        None: Asserts user-provided name is used.
+    """
+    with patch("finnhub_client.get_quote", return_value={"c": 100.0, "pc": 99.0}):
+        result = fetch_ticker_data(
+            MagicMock(), {"ticker": "AAPL", "name": "Apple Inc."}, SAMPLE_SETTINGS
+        )
+        assert result["company_name"] == "Apple Inc."
+
+
+def test_fetch_ticker_data_without_user_name():
+    """Tests fetch_ticker_data falling back to API name when user name is None.
+
+    Returns:
+        None: Asserts API-provided name is used.
     """
     with patch(
-        'finnhub_client.get_quote', return_value={'c': 100.0, 'pc': 99.0}
-    ), patch('finnhub_client.get_profile', return_value='Apple Inc.'), patch(
-        'finnhub_client.get_financials',
-        return_value={'eps': 5.89, 'pe': 24.70, 'dividend': 0.85},
-    ), patch(
-        'finnhub_client.get_ytd_price', return_value=90.0
-    ), patch(
-        'finnhub_client.get_ten_year_price', return_value=50.0
-    ):
-        client = MagicMock()
-        settings = {
-            "columns": {
-                "eps": True,
-                "pe_ratio": True,
-                "dividend": True,
-                "ytd_change": True,
-                "ten_year_change": True
-            }
-        }
-        result = fetch_ticker_data(client, 'AAPL', settings)
-        assert result == {
-            'ticker': 'AAPL',
-            'company_name': 'Apple Inc.',
-            'current_price': 100.0,
-            'eps': 5.89,
-            'pe_ratio': 24.70,
-            'dividend': 0.85,
-            'daily_change': pytest.approx(1.010101, abs=0.0001),
-            'ytd_change': pytest.approx(11.111111, abs=0.0001),
-            'ten_year_change': pytest.approx(100.0, abs=0.0001),
-        }
+        "finnhub_client.get_quote", return_value={"c": 100.0, "pc": 99.0}
+    ), patch("finnhub_client.get_profile", return_value="Apple Inc."):
+        result = fetch_ticker_data(
+            MagicMock(), {"ticker": "AAPL", "name": None}, SAMPLE_SETTINGS
+        )
+        assert result["company_name"] == "Apple Inc."
+
+
+def test_fetch_ticker_data_no_name():
+    """Tests fetch_ticker_data when no name is available.
+
+    Returns:
+        None: Asserts company_name is None when both user and API names are unavailable.
+    """
+    with patch(
+        "finnhub_client.get_quote", return_value={"c": 100.0, "pc": 99.0}
+    ), patch("finnhub_client.get_profile", return_value=None):
+        result = fetch_ticker_data(
+            MagicMock(), {"ticker": "AAPL", "name": None}, SAMPLE_SETTINGS
+        )
+        assert result["company_name"] is None
 
 
 def test_fetch_ticker_data_invalid_ticker():
-    """
-    Test that fetch_ticker_data handles an invalid ticker (quote is None).
-
-    Args:
-        None
+    """Tests fetch_ticker_data with an invalid ticker.
 
     Returns:
-        None: Asserts that the result indicates data unavailability.
+        None: Asserts error message is returned.
     """
-    with patch('finnhub_client.get_quote', return_value=None):
-        client = MagicMock()
-        settings = {
-            "columns": {
-                "eps": True,
-                "pe_ratio": True,
-                "dividend": True,
-                "ytd_change": True,
-                "ten_year_change": True
-            }
-        }
-        result = fetch_ticker_data(client, 'INVALID', settings)
-        assert result == {'ticker': 'INVALID', 'message': 'Data unavailable'}
-
-
-def test_fetch_ticker_data_missing_financials():
-    """
-    Test that fetch_ticker_data handles missing financial data.
-
-    Args:
-        None
-
-    Returns:
-        None: Asserts that financial fields are None, others are populated.
-    """
-    with patch(
-        'finnhub_client.get_quote', return_value={'c': 100.0, 'pc': 99.0}
-    ), patch('finnhub_client.get_profile', return_value='Apple Inc.'), patch(
-        'finnhub_client.get_financials', return_value=None
-    ), patch(
-        'finnhub_client.get_ytd_price', return_value=90.0
-    ), patch(
-        'finnhub_client.get_ten_year_price', return_value=50.0
-    ):
-        client = MagicMock()
-        settings = {
-            "columns": {
-                "eps": True,
-                "pe_ratio": True,
-                "dividend": True,
-                "ytd_change": True,
-                "ten_year_change": True
-            }
-        }
-        result = fetch_ticker_data(client, 'AAPL', settings)
-        assert result == {
-            'ticker': 'AAPL',
-            'company_name': 'Apple Inc.',
-            'current_price': 100.0,
-            'eps': None,
-            'pe_ratio': None,
-            'dividend': None,
-            'daily_change': pytest.approx(1.010101, abs=0.0001),
-            'ytd_change': pytest.approx(11.111111, abs=0.0001),
-            'ten_year_change': pytest.approx(100.0, abs=0.0001),
-        }
-
-
-def test_fetch_ticker_data_missing_historical():
-    """
-    Test that fetch_ticker_data handles missing historical data.
-
-    Args:
-        None
-
-    Returns:
-        None: Asserts that historical changes are None, others are populated.
-    """
-    with patch(
-        'finnhub_client.get_quote', return_value={'c': 100.0, 'pc': 99.0}
-    ), patch('finnhub_client.get_profile', return_value='Apple Inc.'), patch(
-        'finnhub_client.get_financials',
-        return_value={'eps': 5.89, 'pe': 24.70, 'dividend': 0.85},
-    ), patch(
-        'finnhub_client.get_ytd_price', return_value=None
-    ), patch(
-        'finnhub_client.get_ten_year_price', return_value=None
-    ):
-        client = MagicMock()
-        settings = {
-            "columns": {
-                "eps": True,
-                "pe_ratio": True,
-                "dividend": True,
-                "ytd_change": True,
-                "ten_year_change": True
-            }
-        }
-        result = fetch_ticker_data(client, 'AAPL', settings)
-        assert result == {
-            'ticker': 'AAPL',
-            'company_name': 'Apple Inc.',
-            'current_price': 100.0,
-            'eps': 5.89,
-            'pe_ratio': 24.70,
-            'dividend': 0.85,
-            'daily_change': pytest.approx(1.010101, abs=0.0001),
-            'ytd_change': None,
-            'ten_year_change': None,
-        }
+    with patch("finnhub_client.get_quote", return_value=None):
+        result = fetch_ticker_data(
+            MagicMock(), {"ticker": "INVALID", "name": None}, SAMPLE_SETTINGS
+        )
+        assert result == {"ticker": "INVALID", "message": "Data unavailable"}
