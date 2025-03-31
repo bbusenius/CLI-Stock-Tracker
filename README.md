@@ -56,28 +56,69 @@ Edit tickers.json to include the tickers you want to track. For example:
 ```
 
 ### 2.  Run the tool:
+Run the tool in normal mode to display financial data:
 ```
 python main.py
 ```
 This will fetch the financial data for the specified tickers and display it in a formatted table.
 
+Force a refresh to bypass the cache and fetch fresh data:
+```
+python main.py --refresh
+```
+
+Run in daemon mode for continuous cache updates (requires caching enabled):
+```
+python main.py --daemon &
+
+```
+In daemon mode, the tool updates the cache periodically without displaying the table.
+
+## Caching Mechanism
+The tool includes an optional caching system storing API results in `cache.json`:
+- When enabled, it checks the cache for fresh data (within the `interval`).
+- If data is missing or stale, it fetches fresh data, updates the cache, and uses it.
+- If an API call fails, it falls back to cached data (if available) and notifies the user.
+- In daemon mode, it continuously updates the cache every `interval` minutes.
+- To clear the cache, delete `cache.json`.
+
 ## Configuration
-- **Tickers**: The tool reads the list of tickers from tickers.json. This file should contain a JSON array of ticker symbols, e.g., `["AAPL", "MSFT"]`.
-- **Display Settings**: The tool reads display settings from `settings.json`. This file should contain a JSON object with a "columns" key, specifying which optional columns to include:
-  - `eps`: Include the EPS column.
-  - `pe_ratio`: Include the PE Ratio column.
-  - `dividend`: Include the Dividend column (may be missing for some tickers).
-  - `ytd_change`: Include the YTD % Change column (requires historical data access).
-  - `ten_year_change`: Include the 10-Year % Change column (requires historical data access).
-- If `settings.json` is not present or invalid, the tool defaults to excluding these optional columns, ensuring stability on the free Finnhub plan where historical data calls may return 403 errors.
-- Ensure that tickers.json is present in the project root directory.
+- **Tickers**: The tool reads the list of tickers from `tickers.json`. This file can contain either:
+  - A list of strings (e.g., `["AAPL", "MSFT"]`), treated as tickers with no user-provided name.
+  - A list of objects with `ticker` (required) and optional `name` fields (e.g., `[{"ticker": "AAPL", "name": "Apple Inc."}, {"ticker": "MSFT"}]`). If a `name` is provided, it is used in the display instead of fetching it from the API, which is useful for ETFs or when the API name is inaccurate.
+- **Display and Cache Settings**: The tool reads settings from `settings.json`, which contains:
+  - `"columns"`: A dictionary specifying optional columns to include in the table:
+    - `"eps"`: Include the EPS column.
+    - `"pe_ratio"`: Include the PE Ratio column.
+    - `"dividend"`: Include the Dividend column.
+    - `"ytd_change"`: Include the YTD % Change column.
+    - `"ten_year_change"`: Include the 10-Year % Change column.
+  - `"cache"`: A dictionary with cache settings:
+    - `"enabled"`: Boolean to enable or disable caching (default: `false`).
+    - `"interval"`: Integer specifying the cache refresh interval in minutes (default: 60).
+- If `settings.json` is missing or invalid, defaults are used: all optional columns are excluded, and caching is disabled.
+
+**Example `settings.json`:**
+```json
+{
+  "columns": {
+    "eps": true,
+    "pe_ratio": true,
+    "dividend": true,
+    "ytd_change": false,
+    "ten_year_change": true
+  },
+  "cache": {
+    "enabled": true,
+    "interval": 60
+  }
+}
 
 ## API Rate Limits
-- The Finnhub API has a rate limit of 60 calls per minute on the free tier.
-- Each ticker requires up to 5 API calls (quote, profile, financials, YTD historical, and 10-year historical).
-- Therefore, you can track up to 12 tickers without exceeding the rate limit in a single run.
-- If you have more than 12 tickers, you may need to add delays between requests or consider upgrading to a paid Finnhub plan.
-- The current implementation does not include delays, so please be mindful of the rate limits to avoid API errors.
+- Free tier limit: 60 API calls per minute.
+- Each ticker requires up to 5 calls (quote, profile, financials, YTD, 10-year).
+- Caching reduces calls by reusing data when fresh.
+- In daemon mode, updates are staggered (1-second delay per ticker). For 12 tickers with a 60-minute interval, it uses ~60 calls/hour, staying within limits. Adjust interval or ticker count to avoid exceeding limits.
 
 ## Development
 ### Run unit tests:
