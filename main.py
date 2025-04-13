@@ -8,6 +8,7 @@ API interactions, caching, and display rendering.
 """
 
 import argparse
+import logging  # Added for error logging
 import os
 import time
 from typing import Dict, List
@@ -27,6 +28,13 @@ from finnhub_client import (
 )
 from websocket_client import get_latest_price, start_websocket
 
+# Configure logging at module level
+logging.basicConfig(
+    level=logging.INFO,
+    filename='tracker.log',
+    format='%(asctime)s - %(levelname)s - %(message)s',
+)
+
 
 def daemon_mode(
     client: finnhub.Client,
@@ -37,18 +45,29 @@ def daemon_mode(
 
     Args:
         client: Initialized Finnhub client.
-        tickers: List of ticker dictionaries.
-        settings: Configuration settings.
+        tickers: List of ticker dictionaries with 'ticker' and optional 'name'.
+        settings: Configuration settings containing cache interval.
 
     Notes:
         Runs indefinitely, updating the cache every interval minutes.
+        Logs errors for failed data fetches to 'tracker.log'.
+        Respects API rate limits with a 1-second delay between ticker updates.
     """
     interval = settings["cache"]["interval"] * 60  # Convert minutes to seconds
     while True:
         for ticker_obj in tickers:
-            data = fetch_ticker_data(client, ticker_obj, settings)
-            if "message" not in data:
-                update_cache(ticker_obj["ticker"], data)
+            try:
+                data = fetch_ticker_data(client, ticker_obj, settings)
+                if "message" in data:
+                    logging.error(
+                        f"Failed to fetch data for {ticker_obj['ticker']}: {data['message']}"
+                    )
+                else:
+                    update_cache(ticker_obj["ticker"], data)
+            except Exception as e:
+                logging.error(
+                    f"Error fetching data for {ticker_obj['ticker']}: {str(e)}"
+                )
             time.sleep(1)  # Respect API rate limits
         time.sleep(interval)  # Wait before next cycle
 
