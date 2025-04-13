@@ -104,7 +104,9 @@ def main() -> None:
     parser.add_argument(
         "--interval", type=float, help="Refresh interval in seconds for watch mode"
     )
-    args = parser.parse_args()
+    # In test environments, pytest may pass additional arguments
+    # Use parse_known_args to ignore unknown arguments during testing
+    args, _ = parser.parse_known_args()
 
     settings = load_settings("settings.json")
     tickers = load_tickers("tickers.json")
