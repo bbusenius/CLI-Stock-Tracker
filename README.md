@@ -70,9 +70,18 @@ python main.py --refresh
 Run in daemon mode for continuous cache updates (requires caching enabled):
 ```
 python main.py --daemon &
-
 ```
 In daemon mode, the tool updates the cache periodically without displaying the table.
+
+#### Watch Mode
+Run in watch mode for real-time updates using websockets:
+```
+python main.py --watch
+```
+- The display refreshes every `watch_interval` seconds, as specified in `settings.json` (default is 5 seconds).
+- Override the interval with `--interval <seconds>`, e.g., `--interval 10`.
+
+In watch mode, the tool continuously updates the display with the latest prices fetched via websockets.
 
 ## Caching Mechanism
 The tool includes an optional caching system storing API results in `cache.json`:
@@ -86,7 +95,7 @@ The tool includes an optional caching system storing API results in `cache.json`
 - **Tickers**: The tool reads the list of tickers from `tickers.json`. This file can contain either:
   - A list of strings (e.g., `["AAPL", "MSFT"]`), treated as tickers with no user-provided name.
   - A list of objects with `ticker` (required) and optional `name` fields (e.g., `[{"ticker": "AAPL", "name": "Apple Inc."}, {"ticker": "MSFT"}]`). If a `name` is provided, it is used in the display instead of fetching it from the API, which is useful for ETFs or when the API name is inaccurate.
-- **Display and Cache Settings**: The tool reads settings from `settings.json`, which contains:
+- **Display, Cache, and Watch Settings**: The tool reads settings from `settings.json`, which contains:
   - `"columns"`: A dictionary specifying optional columns to include in the table:
     - `"eps"`: Include the EPS column.
     - `"pe_ratio"`: Include the PE Ratio column.
@@ -96,7 +105,8 @@ The tool includes an optional caching system storing API results in `cache.json`
   - `"cache"`: A dictionary with cache settings:
     - `"enabled"`: Boolean to enable or disable caching (default: `false`).
     - `"interval"`: Integer specifying the cache refresh interval in minutes (default: 60).
-- If `settings.json` is missing or invalid, defaults are used: all optional columns are excluded, and caching is disabled.
+  - `"watch_interval"`: The refresh interval in seconds for watch mode (default: 5).
+- If `settings.json` is missing or invalid, defaults are used: all optional columns are excluded, caching is disabled, and watch_interval is 5 seconds.
 
 **Example `settings.json`:**
 ```json
@@ -111,7 +121,8 @@ The tool includes an optional caching system storing API results in `cache.json`
   "cache": {
     "enabled": true,
     "interval": 60
-  }
+  },
+  "watch_interval": 5
 }
 ```
 

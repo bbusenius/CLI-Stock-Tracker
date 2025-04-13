@@ -9,5 +9,6 @@
   "cache": {
     "enabled": true,
     "interval": 60
-  }
+  },
+  "watch_interval": 5
 }

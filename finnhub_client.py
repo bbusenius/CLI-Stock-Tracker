@@ -13,6 +13,7 @@ Key features include:
 - Fetching current quotes, company names, financial metrics, and historical prices.
 - Calculating percentage changes based on fetched data.
 - Aggregating data into a structured format for display, considering display settings.
+- Fetching static data for use in real-time update modes.
 
 All functions include error handling for API failures, invalid tickers, or missing data, ensuring
 robustness in real-world usage.
@@ -20,6 +21,7 @@ robustness in real-world usage.
 
 import os
 from datetime import datetime, timedelta, timezone
+from typing import Dict, Tuple
 
 import finnhub
 
@@ -28,7 +30,7 @@ def initialize_client() -> finnhub.Client:
     """Initializes the Finnhub API client using the API key from the environment variable.
 
     Returns:
-        finnhub.Client: Initialized Finnhub client.
+        Initialized Finnhub client.
 
     Raises:
         ValueError: If the FINNHUB_API_KEY environment variable is not set.
@@ -39,15 +41,15 @@ def initialize_client() -> finnhub.Client:
     return finnhub.Client(api_key)
 
 
-def get_quote(client: finnhub.Client, ticker: str) -> dict | None:
+def get_quote(client: finnhub.Client, ticker: str) -> Dict[str, float] | None:
     """Fetches the current quote data for the given ticker.
 
     Args:
-        client (finnhub.Client): Initialized Finnhub client.
-        ticker (str): Stock or ETF ticker symbol.
+        client: Initialized Finnhub client.
+        ticker: Stock or ETF ticker symbol.
 
     Returns:
-        dict | None: Quote data if successful, None otherwise.
+        Quote data if successful, None otherwise.
     """
     try:
         return client.quote(ticker)
@@ -59,11 +61,11 @@ def get_profile(client: finnhub.Client, ticker: str) -> str | None:
     """Fetches the company name from the company profile for the given ticker.
 
     Args:
-        client (finnhub.Client): Initialized Finnhub client.
-        ticker (str): Stock or ETF ticker symbol.
+        client: Initialized Finnhub client.
+        ticker: Stock or ETF ticker symbol.
 
     Returns:
-        str | None: Company name if successful, None otherwise.
+        Company name if successful, None otherwise.
     """
     try:
         profile = client.company_profile2(symbol=ticker)
@@ -72,15 +74,17 @@ def get_profile(client: finnhub.Client, ticker: str) -> str | None:
         return None
 
 
-def get_financials(client: finnhub.Client, ticker: str) -> dict | None:
+def get_financials(
+    client: finnhub.Client, ticker: str
+) -> Dict[str, float | None] | None:
     """Fetches basic financial metrics (EPS, PE ratio, dividend) for the given ticker.
 
     Args:
-        client (finnhub.Client): Initialized Finnhub client.
-        ticker (str): Stock or ETF ticker symbol.
+        client: Initialized Finnhub client.
+        ticker: Stock or ETF ticker symbol.
 
     Returns:
-        dict | None: Dictionary with EPS, PE, and dividend if successful, None otherwise.
+        Dictionary with EPS, PE, and dividend if successful, None otherwise.
     """
     try:
         financials = client.company_basic_financials(ticker, 'all')
@@ -98,11 +102,11 @@ def get_ytd_price(client: finnhub.Client, ticker: str) -> float | None:
     """Fetches the closing price from the start of the year for the given ticker.
 
     Args:
-        client (finnhub.Client): Initialized Finnhub client.
-        ticker (str): Stock or ETF ticker symbol.
+        client: Initialized Finnhub client.
+        ticker: Stock or ETF ticker symbol.
 
     Returns:
-        float | None: YTD closing price if available, None otherwise.
+        YTD closing price if available, None otherwise.
 
     Notes:
         - Uses a 10-day range from January 1st to account for non-trading days.
@@ -126,11 +130,11 @@ def get_ten_year_price(client: finnhub.Client, ticker: str) -> float | None:
     """Fetches the closing price from 10 years ago for the given ticker.
 
     Args:
-        client (finnhub.Client): Initialized Finnhub client.
-        ticker (str): Stock or ETF ticker symbol.
+        client: Initialized Finnhub client.
+        ticker: Stock or ETF ticker symbol.
 
     Returns:
-        float | None: The closing price from 10 years ago, or None if unavailable.
+        The closing price from 10 years ago, or None if unavailable.
 
     Notes:
         - Uses a 5-day range from 10 years ago to ensure a trading day is captured.
@@ -161,19 +165,20 @@ def get_ten_year_price(client: finnhub.Client, ticker: str) -> float | None:
 
 
 def calculate_changes(
-    quote: dict | None, ytd_price: float | None, ten_year_price: float | None
-) -> tuple[float | None, float | None, float | None]:
+    quote: Dict[str, float] | None,
+    ytd_price: float | None,
+    ten_year_price: float | None,
+) -> Tuple[float | None, float | None, float | None]:
     """Calculates the percentage changes for daily, YTD, and 10-year periods.
 
     Args:
-        quote (dict | None): The quote data containing 'c' (current price) and 'pc' (previous close).
-        ytd_price (float | None): The closing price at the start of the year.
-        ten_year_price (float | None): The closing price from 10 years ago.
+        quote: The quote data containing 'c' (current price) and 'pc' (previous close).
+        ytd_price: The closing price at the start of the year.
+        ten_year_price: The closing price from 10 years ago.
 
     Returns:
-        tuple[float | None, float | None, float | None]: A tuple containing daily_change,
-            ytd_change, and ten_year_change. Each change is a float representing the percentage
-            change, or None if the calculation cannot be performed.
+        A tuple containing daily_change, ytd_change, and ten_year_change. Each change is a float
+        representing the percentage change, or None if the calculation cannot be performed.
 
     Notes:
         - Returns (None, None, None) if quote is None.
@@ -213,7 +218,9 @@ def calculate_changes(
     return daily_change, ytd_change, ten_year_change
 
 
-def fetch_ticker_data(client: finnhub.Client, ticker_obj: dict, settings: dict) -> dict:
+def fetch_ticker_data(
+    client: finnhub.Client, ticker_obj: Dict[str, str | None], settings: Dict[str, dict]
+) -> Dict[str, str | float | None]:
     """Fetches and aggregates financial data for the given ticker object based on display settings.
 
     This function retrieves the quote, company profile (if needed), basic financials, and conditionally
@@ -226,25 +233,19 @@ def fetch_ticker_data(client: finnhub.Client, ticker_obj: dict, settings: dict) 
     None.
 
     Args:
-        client (finnhub.Client): The initialized Finnhub API client.
-        ticker_obj (dict): A dictionary with 'ticker' (str) and optionally 'name' (str or None).
-        settings (dict): Display settings indicating which optional columns to include, e.g.,
-            {'columns': {'eps': bool, 'pe_ratio': bool, 'dividend': bool, 'ytd_change': bool,
-            'ten_year_change': bool}}.
+        client: The initialized Finnhub API client.
+        ticker_obj: A dictionary with 'ticker' (str) and optionally 'name' (str or None).
+        settings: Display settings indicating which optional columns to include.
 
     Returns:
-        dict: A dictionary containing the aggregated data. If the ticker is invalid,
-            it contains {'ticker': str, 'message': 'Data unavailable'}. Otherwise, it contains keys
-            for 'ticker', 'company_name', 'current_price', 'eps', 'pe_ratio', 'dividend',
-            'daily_change', 'ytd_change', and 'ten_year_change', with values that may be None if
-            the data is unavailable or not fetched.
+        A dictionary containing the aggregated data. If invalid, contains {'ticker': str, 'message': str}.
+        Otherwise, contains keys for 'ticker', 'company_name', 'current_price', 'eps', 'pe_ratio',
+        'dividend', 'daily_change', 'ytd_change', and 'ten_year_change'.
 
     Notes:
         - Assumes 'ticker' key exists in ticker_obj, as validated by load_tickers in config.py.
         - Historical prices are fetched only if their change columns are enabled, minimizing API calls.
-        - If both user-provided and API-fetched names are unavailable, company_name is None, and
-          display_table will show 'N/A'.
-        - Edge cases like API rate limits or partial data are handled via None returns from fetch functions.
+        - If both user-provided and API-fetched names are unavailable, company_name is None.
     """
     ticker = ticker_obj["ticker"]
     user_name = ticker_obj.get("name")
@@ -281,4 +282,67 @@ def fetch_ticker_data(client: finnhub.Client, ticker_obj: dict, settings: dict) 
         "daily_change": daily_change,
         "ytd_change": ytd_change,
         "ten_year_change": ten_year_change,
+    }
+
+
+def fetch_static_data(
+    client: finnhub.Client, ticker_obj: Dict[str, str | None], settings: Dict[str, dict]
+) -> Dict[str, str | float | None]:
+    """Fetches static financial data for the given ticker object.
+
+    This function retrieves data that does not change frequently, such as the previous close price,
+    initial current price, company name, financial metrics, and historical prices for YTD and 10-year
+    changes, intended for use with real-time price updates via websockets.
+
+    Args:
+        client: The initialized Finnhub API client.
+        ticker_obj: A dictionary with 'ticker' (str) and optionally 'name' (str or None).
+        settings: Display settings indicating which optional columns to include.
+
+    Returns:
+        A dictionary containing the static data. If invalid, contains {'ticker': str, 'message': str}.
+        Otherwise, includes keys for 'ticker', 'company_name', 'pc', 'initial_current_price', 'eps',
+        'pe_ratio', 'dividend', 'ytd_price', and 'ten_year_price'.
+
+    Notes:
+        - 'company_name' prioritizes the user-provided name; otherwise, it fetches from the API.
+        - 'ytd_price' and 'ten_year_price' are fetched only if their change columns are enabled.
+        - 'initial_current_price' is included from the quote to provide a starting value for watch mode.
+        - Assumes 'ticker' key exists in ticker_obj, validated by load_tickers in config.py.
+    """
+    ticker = ticker_obj["ticker"]
+    user_name = ticker_obj.get("name")
+    quote = get_quote(client, ticker)
+    if quote is None:
+        return {"ticker": ticker, "message": "Data unavailable"}
+
+    pc = quote.get("pc")
+    initial_current_price = quote.get("c")
+
+    # Use user-provided name if available, else fetch from API
+    if user_name is not None:
+        company_name = user_name
+    else:
+        company_name = get_profile(client, ticker)
+
+    financials = get_financials(client, ticker)
+    ytd_price = (
+        get_ytd_price(client, ticker) if settings["columns"]["ytd_change"] else None
+    )
+    ten_year_price = (
+        get_ten_year_price(client, ticker)
+        if settings["columns"]["ten_year_change"]
+        else None
+    )
+
+    return {
+        "ticker": ticker,
+        "company_name": company_name,
+        "pc": pc,
+        "initial_current_price": initial_current_price,
+        "eps": financials.get("eps") if financials else None,
+        "pe_ratio": financials.get("pe") if financials else None,
+        "dividend": financials.get("dividend") if financials else None,
+        "ytd_price": ytd_price,
+        "ten_year_price": ten_year_price,
     }

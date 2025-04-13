@@ -7,6 +7,8 @@ valid data and error cases such as invalid tickers or missing values, and dynami
 based on user-defined settings.
 """
 
+from typing import Dict, List
+
 from rich.console import Console
 from rich.table import Table
 
@@ -16,10 +18,10 @@ def format_percentage(value: float | None) -> str:
     Formats a percentage value with color styling.
 
     Args:
-        value (float | None): The percentage change value.
+        value: The percentage change value.
 
     Returns:
-        str: The formatted string with color tags if applicable.
+        The formatted string with color tags if applicable.
 
     Notes:
         - If the value is None, returns "N/A" without styling.
@@ -37,36 +39,35 @@ def format_percentage(value: float | None) -> str:
         return f"{value:.2f}%"
 
 
-def display_table(data: list[dict], settings: dict, debug: bool = False) -> None:
+def display_table(
+    data: List[Dict[str, str | float | None]],
+    settings: Dict[str, dict],
+    console: Console = None,
+    debug: bool = False,
+) -> None:
     """
     Displays the financial data in a formatted table based on the provided settings.
 
     Args:
-        data (list[dict]): A list of dictionaries, each containing the financial data for a ticker.
-            Each dictionary should have keys: 'ticker', 'company_name', 'current_price', 'eps',
-            'pe_ratio', 'dividend', 'daily_change', 'ytd_change', 'ten_year_change' for valid tickers,
-            or 'ticker' and 'message' for invalid tickers.
-        settings (dict): Display settings indicating which optional columns to include, e.g.,
-            {'columns': {'eps': bool, 'pe_ratio': bool, 'dividend': bool, 'ytd_change': bool, 'ten_year_change': bool}}.
-        debug (bool, optional): If True, prints additional plain text output for test detection.
-            Defaults to False.
-
-    Returns:
-        None: The function prints the table to the console and does not return a value.
+        data: A list of dictionaries, each containing financial data for a ticker.
+            Valid ticker keys: 'ticker', 'company_name', 'current_price', 'eps', 'pe_ratio',
+            'dividend', 'daily_change', 'ytd_change', 'ten_year_change'.
+            Invalid ticker keys: 'ticker', 'message'.
+        settings: Display settings indicating which optional columns to include.
+        console: An optional existing Console instance; if None, a new one is created.
+        debug: If True, prints additional plain text output for test detection.
 
     Notes:
-        - The table always includes base columns: Ticker, Company Name, Current Price, Daily % Change.
-        - Optional columns (EPS, PE Ratio, Dividend, YTD % Change, 10-Year % Change) are included only if enabled
-          in the settings, defaulting to excluded to avoid displaying unreliable data.
-        - For valid tickers, missing values (None) are displayed as 'N/A'.
-        - Numerical values are formatted to two decimal places, and percentage changes are styled
-          with color (green for gains, red for losses).
-        - For invalid tickers, the table shows the ticker and a message spanning the remaining columns.
-        - Columns are aligned according to the design system: text left-aligned, numbers right-aligned.
-        - The table adjusts to the terminal width automatically via the rich library.
-        - When debug is True, plain text outputs are printed for testing purposes.
+        - Base columns: Ticker, Company Name, Current Price, Daily % Change.
+        - Optional columns: EPS, PE Ratio, Dividend, YTD % Change, 10-Year % Change, included if enabled.
+        - Missing values (None) are displayed as 'N/A'.
+        - Numbers are formatted to two decimal places; percentages are colored (green for gains, red for losses).
+        - Invalid tickers show ticker and message spanning remaining columns.
+        - Columns are aligned: text left, numbers right.
+        - In watch mode, reusing a console improves performance by avoiding recreation.
     """
-    console = Console(highlight=False, markup=True)
+    if console is None:
+        console = Console(highlight=False, markup=True)
     table = Table(show_header=True)
 
     # Define base columns that are always included
@@ -136,5 +137,4 @@ def display_table(data: list[dict], settings: dict, debug: bool = False) -> None
                 print("Valid ticker: " + ", ".join(row))
             table.add_row(*row)
 
-    # Print the table to the console
     console.print(table)

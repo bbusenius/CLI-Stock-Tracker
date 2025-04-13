@@ -1,16 +1,15 @@
 """
 Unit tests for the configuration module.
 
-This module contains tests for the `config.py` module, specifically the `load_tickers` function,
-which loads a list of stock and ETF tickers from a JSON file. The tests verify that the function
-correctly handles both the legacy list-of-strings format and the new list-of-objects format with
-optional company names, ensuring robust configuration management for the Stock and ETF Price
-Tracker CLI tool.
+This module contains tests for the `config.py` module, specifically the `load_tickers` and `load_settings`
+functions, which load a list of stock and ETF tickers and settings from JSON files. The tests verify that
+the functions correctly handle various formats and edge cases, ensuring robust configuration management
+for the Stock and ETF Price Tracker CLI tool.
 """
 
 from unittest.mock import patch
 
-from config import load_tickers
+from config import load_settings, load_tickers
 
 
 @patch('config.rprint')
@@ -162,3 +161,56 @@ def test_load_tickers_non_list(mock_rprint, tmp_path):
     args, _ = mock_rprint.call_args
     assert f"[red]Error loading tickers from {file_path}:" in args[0]
     assert "Tickers must be a list" in args[0]
+
+
+def test_load_settings_watch_interval(tmp_path):
+    """Test loading watch_interval from settings.json.
+
+    Args:
+        tmp_path: Pytest fixture providing a temporary directory.
+
+    Returns:
+        None: Asserts watch_interval is loaded correctly when valid.
+    """
+    file_path = tmp_path / "settings.json"
+    file_path.write_text('{"watch_interval": 10}')
+    settings = load_settings(str(file_path))
+    assert settings["watch_interval"] == 10
+
+
+def test_load_settings_watch_interval_invalid(tmp_path):
+    """Test handling invalid watch_interval in settings.json.
+
+    Args:
+        tmp_path: Pytest fixture providing a temporary directory.
+
+    Returns:
+        None: Asserts default value is used with a warning for invalid input.
+    """
+    file_path = tmp_path / "settings.json"
+    file_path.write_text('{"watch_interval": "invalid"}')
+    with patch('config.rprint') as mock_rprint:
+        settings = load_settings(str(file_path))
+        assert settings["watch_interval"] == 5
+        mock_rprint.assert_called_with(
+            "[yellow]Warning: Invalid watch_interval in settings. Using default 5 seconds.[/yellow]"
+        )
+
+
+def test_load_settings_watch_interval_negative(tmp_path):
+    """Test handling negative watch_interval in settings.json.
+
+    Args:
+        tmp_path: Pytest fixture providing a temporary directory.
+
+    Returns:
+        None: Asserts default value is used with a warning for negative input.
+    """
+    file_path = tmp_path / "settings.json"
+    file_path.write_text('{"watch_interval": -5}')
+    with patch('config.rprint') as mock_rprint:
+        settings = load_settings(str(file_path))
+        assert settings["watch_interval"] == 5
+        mock_rprint.assert_called_with(
+            "[yellow]Warning: watch_interval must be positive. Using default 5 seconds.[/yellow]"
+        )

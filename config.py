@@ -8,19 +8,20 @@ configuring the Stock and ETF Price Tracker CLI tool.
 """
 
 import json
+from typing import Dict, List
 
 from rich import print as rprint
 
 
-def load_tickers(file_path: str) -> list[dict]:
+def load_tickers(file_path: str) -> List[Dict[str, str | None]]:
     """
     Load the list of tickers from a JSON file, supporting both string and object formats.
 
     Args:
-        file_path (str): Path to the JSON file containing the list of tickers.
+        file_path: Path to the JSON file containing the list of tickers.
 
     Returns:
-        list[dict]: A list of dictionaries, each with 'ticker' (str) and optionally 'name' (str or None).
+        A list of dictionaries, each with 'ticker' (str) and optionally 'name' (str or None).
 
     Notes:
         The JSON file can contain either:
@@ -62,15 +63,15 @@ def load_tickers(file_path: str) -> list[dict]:
         return []
 
 
-def load_settings(file_path: str) -> dict:
+def load_settings(file_path: str) -> Dict[str, dict | float]:
     """
-    Load display settings and cache settings from a JSON file.
+    Load display settings, cache settings, and watch interval from a JSON file.
 
     Args:
-        file_path (str): Path to the JSON file containing settings.
+        file_path: Path to the JSON file containing settings.
 
     Returns:
-        dict: Settings dictionary with 'columns' and 'cache' sections.
+        Settings dictionary with 'columns', 'cache', and 'watch_interval' keys.
 
     Notes:
         Expected format:
@@ -85,13 +86,16 @@ def load_settings(file_path: str) -> dict:
             "cache": {
                 "enabled": bool,
                 "interval": int  # minutes
-            }
+            },
+            "watch_interval": float  # seconds
         }
         If the file is missing, unreadable, or invalid, a warning is printed, and default settings are returned.
         Defaults:
         - columns: all False
         - cache: {"enabled": False, "interval": 60}
-        Missing sections or keys in the JSON file are filled with defaults to ensure consistent output.
+        - watch_interval: 5
+        Missing sections or keys are filled with defaults.
+        watch_interval must be a positive number; invalid values revert to default with a warning.
     """
     default_settings = {
         "columns": {
@@ -102,6 +106,7 @@ def load_settings(file_path: str) -> dict:
             "ten_year_change": False,
         },
         "cache": {"enabled": False, "interval": 60},
+        "watch_interval": 5,
     }
     try:
         with open(file_path, 'r') as f:
@@ -120,6 +125,23 @@ def load_settings(file_path: str) -> dict:
             for key in default_settings["cache"]:
                 if key not in settings["cache"]:
                     settings["cache"][key] = default_settings["cache"][key]
+        # Handle watch_interval
+        watch_interval = settings.get(
+            "watch_interval", default_settings["watch_interval"]
+        )
+        try:
+            watch_interval = float(watch_interval)
+            if watch_interval <= 0:
+                rprint(
+                    "[yellow]Warning: watch_interval must be positive. Using default 5 seconds.[/yellow]"
+                )
+                watch_interval = 5
+        except (ValueError, TypeError):
+            rprint(
+                "[yellow]Warning: Invalid watch_interval in settings. Using default 5 seconds.[/yellow]"
+            )
+            watch_interval = 5
+        settings["watch_interval"] = watch_interval
         return settings
     except (FileNotFoundError, json.JSONDecodeError) as e:
         rprint(
